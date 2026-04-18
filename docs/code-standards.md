@@ -743,6 +743,471 @@ for (ClickEvent event : events) {
 
 ---
 
+## Spark ETL Patterns (Phase 4)
+
+### Architecture Overview
+
+The Spark ETL module processes Kafka events through three parallel aggregation streams using Structured Streaming, implemented as a Spring Boot application managing SparkSession lifecycle.
+
+```
+Pattern: SparkSession as Spring Bean → Reusable across multiple jobs
+         CommandLineRunner for job orchestration
+         foreachBatch() sink for full DataFrame API control in each micro-batch
+```
+
+### Project Structure
+
+```
+spark-etl/
+├── SparkETLApplication.java          # Entry point (Spring Boot)
+├── job/ClickstreamETLJob.java        # Orchestrator (CommandLineRunner)
+├── config/
+│   ├── SparkConfig.java              # SparkSession bean, Spark config
+│   ├── MongoConfig.java              # MongoClient bean (transient, created per batch)
+│   └── StreamingQueryMonitor.java    # Listener for query metrics
+├── schema/EventSchema.java           # Spark SQL schemas (immutable)
+├── transform/
+│   ├── SessionAggregator.java        # Stream 1: Session windows (30-min gap)
+│   ├── PageMetricsAggregator.java    # Stream 2: Page metrics (5-min tumbling)
+│   └── UserJourneyBuilder.java       # Stream 3: User journeys (30-min gap)
+├── sink/MongoForeachBatchWriter.java # Batch writer (MongoClient lifecycle)
+└── service/MongoIndexService.java    # Indexes at startup
+```
+
+### SparkSession Configuration
+
+**Pattern: Spring Bean Managed SparkSession**
+
+```java
+@Configuration
+public class SparkConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(SparkConfig.class);
+
+    private final StreamingQueryMonitor queryMonitor;
+
+    public SparkConfig(StreamingQueryMonitor queryMonitor) {
+        this.queryMonitor = queryMonitor;
+    }
+
+    @Bean
+    public SparkSession sparkSession() {
+        SparkSession spark = SparkSession.builder()
+                .appName("clickstream-etl")
+                .master("local[*]")  // Dev mode; remove for cluster
+                .config("spark.sql.session.timeZone", "UTC")
+                .config("spark.sql.shuffle.partitions", "4")
+                // Session window buffer (increase for larger windows)
+                .config("spark.sql.session.window.buffer.in.memory.threshold", "4096")
+                // Force delete temp checkpoint on restart (dev only)
+                .config("spark.sql.streaming.forceDeleteTempCheckpointLocation",
+                        System.getenv("SPARK_FORCE_DELETE_CHECKPOINT") != null ? "true" : "false")
+                .getOrCreate();
+
+        spark.sparkContext().setLogLevel("INFO");
+        spark.streams().addListener(queryMonitor);
+
+        return spark;
+    }
+
+    @Override
+    public void destroy() {
+        SparkSession spark = SparkSession.active();
+        if (spark != null) {
+            logger.info("Stopping SparkSession...");
+            spark.stop();
+        }
+    }
+}
+
+// ✅ Benefits:
+// • Single SparkSession per app (expensive to create)
+// • Reusable from any service via @Autowired
+// • Configuration centralized (dev vs prod)
+// • Listener registered for metrics/monitoring
+```
+
+### ETL Job Orchestration
+
+**Pattern: CommandLineRunner for Stream Management**
+
+```java
+@Component
+public class ClickstreamETLJob implements CommandLineRunner {
+
+    private static final Logger logger = LoggerFactory.getLogger(ClickstreamETLJob.class);
+
+    private final SparkSession sparkSession;
+    private final SessionAggregator sessionAggregator;
+    private final PageMetricsAggregator pageMetricsAggregator;
+    private final UserJourneyBuilder userJourneyBuilder;
+    private final MongoForeachBatchWriter mongoWriter;
+    private final StreamingQueryListener queryListener;
+
+    // Constructor injection of all dependencies
+
+    @Override
+    public void run(String... args) throws Exception {
+        logger.info("Starting Clickstream ETL Job");
+
+        try {
+            // Read Kafka stream once
+            Dataset<Row> rawEvents = sparkSession
+                    .readStream()
+                    .format("kafka")
+                    .option("kafka.bootstrap.servers", kafkaServers)
+                    .option("subscribe", "clickstream-events")
+                    .option("startingOffsets", "earliest")
+                    .option("failOnDataLoss", "false")
+                    .load()
+                    .select(from_json(col("value"), EventSchema.clickEventSchema()).alias("event"))
+                    .select("event.*")
+                    .withWatermark("timestamp", "10 minutes");
+
+            logger.info("Kafka source configured with 10-minute watermark");
+
+            // Stream 1: Session Aggregates
+            StreamingQuery sessionQuery = sessionAggregator.aggregate(rawEvents)
+                    .writeStream()
+                    .foreachBatch((batchDf, batchId) ->
+                            mongoWriter.writeBatch(batchDf, batchId, "session_aggregates"))
+                    .option("checkpointLocation", checkpointDir + "/session-aggregates")
+                    .start();
+
+            // Stream 2: Page Metrics
+            StreamingQuery pageMetricsQuery = pageMetricsAggregator.aggregate(rawEvents)
+                    .writeStream()
+                    .foreachBatch((batchDf, batchId) ->
+                            mongoWriter.writeBatch(batchDf, batchId, "page_metrics"))
+                    .option("checkpointLocation", checkpointDir + "/page-metrics")
+                    .start();
+
+            // Stream 3: User Journeys
+            StreamingQuery userJourneyQuery = userJourneyBuilder.build(rawEvents)
+                    .writeStream()
+                    .foreachBatch((batchDf, batchId) ->
+                            mongoWriter.writeBatch(batchDf, batchId, "user_journeys"))
+                    .option("checkpointLocation", checkpointDir + "/user-journeys")
+                    .start();
+
+            logger.info("All 3 ETL streams started successfully");
+
+            // Block until any stream terminates
+            sparkSession.streams().awaitAnyTermination();
+
+        } catch (StreamingQueryException e) {
+            logger.error("Streaming query failed", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        logger.info("Shutting down Spark ETL Job");
+        if (sparkSession != null) {
+            sparkSession.streams().active().forEach(StreamingQuery::stop);
+        }
+    }
+}
+
+// ✅ Benefits:
+// • Logical organization: 3 streams orchestrated together
+// • Independent checkpoints: each stream can restart independently
+// • Error handling: one stream failure doesn't stop others
+// • Graceful shutdown: @PreDestroy stops all streams
+```
+
+### DataFrame Schema Definition
+
+**Pattern: Schema as Static Methods (Immutable)**
+
+```java
+public class EventSchema {
+
+    // Schema for raw Kafka JSON
+    public static StructType clickEventSchema() {
+        return new StructType(new StructField[]{
+                new StructField("eventId", StringType$.MODULE$, false, Metadata.empty()),
+                new StructField("userId", StringType$.MODULE$, false, Metadata.empty()),
+                new StructField("sessionId", StringType$.MODULE$, false, Metadata.empty()),
+                new StructField("eventType", StringType$.MODULE$, false, Metadata.empty()),
+                new StructField("pageUrl", StringType$.MODULE$, false, Metadata.empty()),
+                new StructField("timestamp", LongType$.MODULE$, false, Metadata.empty()),
+                new StructField("metadata", metadataSchema(), true, Metadata.empty()),
+        });
+    }
+
+    public static StructType metadataSchema() {
+        return new StructType(new StructField[]{
+                new StructField("x", IntegerType$.MODULE$, true, Metadata.empty()),
+                new StructField("y", IntegerType$.MODULE$, true, Metadata.empty()),
+                new StructField("scrollDepth", DoubleType$.MODULE$, true, Metadata.empty()),
+                // ... other fields
+        });
+    }
+
+    private EventSchema() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+}
+
+// Usage in transformers:
+Dataset<Row> events = sparkSession
+        .readStream()
+        .option("subscribe", "clickstream-events")
+        .json(...)
+        .select(from_json(col("value"), EventSchema.clickEventSchema()).alias("event"))
+        .select("event.*");
+
+// ✅ Benefits:
+// • Schema single source of truth
+// • Reusable across all 3 streams
+// • Type-safe DataFrame operations
+// • Matches shared-models ClickEvent structure
+```
+
+### Transform: Parallel Aggregations
+
+**Pattern: Aggregator Classes (Stateless, Testable)**
+
+```java
+@Component
+public class SessionAggregator {
+
+    private final SparkSession sparkSession;
+
+    public SessionAggregator(SparkSession sparkSession) {
+        this.sparkSession = sparkSession;
+    }
+
+    public Dataset<Row> aggregate(Dataset<Row> rawEvents, int sessionGapMinutes) {
+        return rawEvents
+                .filter(col("eventType").isin("CLICK", "PAGE_VIEW", "SCROLL"))
+                .groupBy(
+                        session_window(col("timestamp"), sessionGapMinutes + " minutes"),
+                        col("sessionId"),
+                        col("userId"))
+                .agg(
+                        // Aggregations
+                        (max(col("timestamp")).minus(min(col("timestamp")))).alias("durationMs"),
+                        count(when(col("eventType").equalTo("PAGE_VIEW"), 1)).alias("pageViewCount"),
+                        count(when(col("eventType").equalTo("CLICK"), 1)).alias("clickCount"),
+                        countDistinct(col("pageUrl")).alias("uniquePageCount"),
+                        first(col("pageUrl")).alias("entryPage"),
+                        last(col("pageUrl")).alias("exitPage"),
+                        // Bounce rate: only 1 unique page AND duration < 10 sec
+                        when(
+                                and(
+                                        col("uniquePageCount").equalTo(1),
+                                        col("durationMs").lt(10000)),
+                                1)
+                                .otherwise(0)
+                                .alias("bounced"))
+                .select(
+                        col("sessionId"),
+                        col("userId"),
+                        col("window.start").alias("windowStart"),
+                        col("window.end").alias("windowEnd"),
+                        col("durationMs"),
+                        col("pageViewCount"),
+                        col("clickCount"),
+                        col("uniquePageCount"),
+                        col("entryPage"),
+                        col("exitPage"),
+                        col("bounced"),
+                        current_timestamp().alias("createdAt"));
+    }
+}
+
+// ✅ Benefits:
+// • Single responsibility (session aggregation only)
+// • Stateless (can be parallelized)
+// • Testable (input DataFrame → output DataFrame)
+// • Reusable (called from ClickstreamETLJob)
+```
+
+### MongoDB Sink with foreachBatch
+
+**Pattern: Batch Writer (MongoClient Lifecycle per Batch)**
+
+```java
+public class MongoForeachBatchWriter implements Serializable {
+
+    // ✅ IMPORTANT: Create MongoClient INSIDE foreachBatch, not before
+    public void writeBatch(Dataset<Row> batchDf, long batchId, String collectionName) {
+        logger.info("Writing batch {} to collection: {}", batchId, collectionName);
+
+        // Create MongoClient inside batch scope (serialization-safe)
+        MongoClient client = MongoClients.create(mongoUri);
+        try {
+            MongoCollection<Document> collection = client
+                    .getDatabase(dbName)
+                    .getCollection(collectionName);
+
+            List<WriteModel<Document>> writes = batchDf
+                    .collectAsList()
+                    .stream()
+                    .map(row -> {
+                        // Convert Row to Document (upsert key varies by collection)
+                        Document doc = convertRowToDocument(row);
+                        String upsertKey = getUpsertKey(collectionName);
+
+                        // Upsert filter: match by composite key
+                        Bson filter = createUpsertFilter(row, upsertKey);
+
+                        // Upsert operation: update or insert
+                        return new UpdateOneModel<>(
+                                filter,
+                                new Document("$set", doc),
+                                new UpdateOptions().upsert(true));
+                    })
+                    .toList();
+
+            // Batch write with bulk operations
+            BulkWriteResult result = collection.bulkWrite(writes);
+            logger.info("Batch {}: upserted={}, matched={}", batchId,
+                    result.getUpsertedCount(), result.getMatchedCount());
+
+        } finally {
+            client.close();  // ✅ Always close client
+        }
+    }
+
+    private Bson createUpsertFilter(Row row, String collectionName) {
+        // session_aggregates: match on {sessionId, windowStart}
+        // page_metrics: match on {pageUrl, windowStart}
+        // user_journeys: match on {userId, sessionId}
+        switch (collectionName) {
+            case "session_aggregates":
+                return Filters.and(
+                        Filters.eq("sessionId", row.getAs("sessionId")),
+                        Filters.eq("windowStart", new Date(row.getAs("windowStart"))));
+            // ... other cases
+        }
+    }
+}
+
+// ✅ Benefits:
+// • foreachBatch gives full DataFrame API per micro-batch
+// • Batch writes faster than row-at-a-time
+// • Upsert by composite key (idempotent)
+// • Bulk operations reduce network round-trips
+// • MongoClient created inside foreachBatch (serialization-safe)
+```
+
+### Startup: Initialize MongoDB Indexes
+
+**Pattern: ApplicationReadyEvent Listener**
+
+```java
+@Service
+public class MongoIndexService {
+
+    private static final Logger logger = LoggerFactory.getLogger(MongoIndexService.class);
+
+    private final MongoClient mongoClient;
+    private final String dbName;
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void initializeIndexes() {
+        logger.info("Initializing MongoDB indexes...");
+
+        MongoDatabase db = mongoClient.getDatabase(dbName);
+
+        // Indexes for session_aggregates
+        db.getCollection("session_aggregates")
+                .createIndex(Indexes.compoundIndex(
+                        Indexes.ascending("sessionId"),
+                        Indexes.descending("windowStart")));
+
+        // Indexes for page_metrics (with TTL)
+        db.getCollection("page_metrics")
+                .createIndex(new Document("createdAt", 1)
+                        .append("expireAfterSeconds", 2592000)); // 30 days
+
+        // Indexes for user_journeys
+        db.getCollection("user_journeys")
+                .createIndex(Indexes.compoundIndex(
+                        Indexes.ascending("userId"),
+                        Indexes.ascending("sessionId")));
+
+        logger.info("All indexes created successfully");
+    }
+}
+
+// ✅ Benefits:
+// • Runs once at startup (guaranteed before first write)
+// • TTL index auto-deletes old documents
+// • Compound indexes optimize queries
+// • Logging for verification
+```
+
+### Configuration & Environment Variables
+
+**Key settings from application.yml:**
+
+```yaml
+kafka:
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  topic: clickstream-events
+  properties:
+    security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+
+mongodb:
+  uri: ${MONGODB_URI:mongodb://localhost:27017}
+  database: clickstream_db
+
+spark:
+  checkpoint-location: /tmp/spark-checkpoints
+  config:
+    executor.memory: ${SPARK_EXECUTOR_MEMORY:512m}
+    driver.memory: ${SPARK_DRIVER_MEMORY:1g}
+
+streaming:
+  trigger:
+    processing-time: 30  # seconds
+  watermark:
+    delay: 10  # minutes
+```
+
+**Production deployment example:**
+
+```bash
+# Set environment before running
+export KAFKA_BOOTSTRAP_SERVERS="kafka1:9092,kafka2:9092,kafka3:9092"
+export MONGODB_URI="mongodb://replica-set-0:27017,replica-set-1:27017/?replicaSet=rs0"
+export SPARK_EXECUTOR_MEMORY="4g"
+export SPARK_DRIVER_MEMORY="2g"
+
+# Run application
+java -jar spark-etl-1.0.0-SNAPSHOT.jar
+```
+
+### Error Handling & Resilience
+
+**Pattern: StreamingQueryException Handling**
+
+```java
+try {
+    sparkSession.streams().awaitAnyTermination();
+} catch (StreamingQueryException e) {
+    logger.error("Streaming query failed: {}", e.getMessage(), e);
+    if (e.message().contains("checkpoint")) {
+        logger.info("Checkpoint corrupted, delete and restart");
+        // Clean up checkpoint directory
+        // Restart will replay from earliest offset
+    }
+    throw new RuntimeException(e);
+}
+
+// ✅ Benefits:
+// • Specific error messages for debugging
+// • Checkpoint corruption detected and logged
+// • Graceful exit (Spring Boot handles restart)
+```
+
+---
+
 ## Code Review Checklist
 
 When reviewing pull requests, verify:

@@ -62,7 +62,7 @@ See inline diagram above in chat, or `research/researcher-01-report.md` for deta
 | 1 | Dev environment (Docker Compose) | Done | 3h | [phase-01](./phase-01-dev-environment.md) |
 | 2 | Kafka topic design & event schema | Done | 3h | [phase-02](./phase-02-kafka-design.md) |
 | 3 | Spring Boot ingestion API | Done | 6h | [phase-03](./phase-03-ingestion-api.md) |
-| 4 | Spark ETL pipeline | Pending | 8h | [phase-04](./phase-04-spark-etl.md) |
+| 4 | Spark ETL pipeline | Done | 8h | [phase-04](./phase-04-spark-etl.md) |
 | 5 | Real-time analytics service (Arrow) | Pending | 8h | [phase-05](./phase-05-realtime-analytics.md) |
 | 6 | Raw event archiver | Pending | 3h | [phase-06](./phase-06-raw-archiver.md) |
 | 7 | React frontend (Atomic Design) | Pending | 9h | [phase-07](./phase-07-react-frontend.md) |
@@ -134,3 +134,34 @@ mvn test -pl shared-models   # Test specific module
 ```
 
 **Rationale:** As noted by user, "we will have many services to run, for that each service should in one folder/directory to avoid messy codebase." This structure scales to 5+ services without losing organization or clarity.
+
+## Phase 4 Completion Summary
+
+**Completed:** 2026-04-18
+
+### Deliverables
+- **Spark Structured Streaming ETL Pipeline** — Production-grade stream processing with 3 parallel output aggregations
+- **SessionAggregator** — Windowed aggregation (10s tumbling window) for session-level metrics with state store
+- **PageMetricsAggregator** — Page-level metrics computation with sliding windows and late-arriving data handling
+- **UserJourneyBuilder** — Session-ordered event sequence building with stateful transformation
+- **MongoForeachBatchWriter** — Custom sink with upsert semantics, retry logic, and batch monitoring
+- **MongoDB Integration** — Automatic index creation via MongoIndexService, optimized for read patterns
+- **Graceful Shutdown** — Streaming query lifecycle management with configurable timeout
+- **Performance Monitoring** — StreamingQueryMonitor for query latency, throughput, and error tracking
+- **Security Configuration** — Environment-based externalization for Mongo credentials and Spark settings
+- **Maven Multi-Module** — spark-etl module with parent POM dependency management
+- **Comprehensive Test Suite** — 5 test classes covering transformers, schema validation, and end-to-end integration
+
+### Architecture Highlights
+- **Input:** Kafka topic (clickstream) consumed at 50k events/second throughput expectation
+- **Processing:** 3 parallel streaming DataFrames with independent aggregation logic
+- **Output:** 3 MongoDB collections (session_aggregates, page_metrics, user_journeys) with streaming writes
+- **Failure Handling:** Exponential backoff retry (3 attempts, 1s base delay) for transient MongoDB failures
+- **Monitoring:** Per-batch metrics published to StreamingQueryMonitor for dashboarding
+
+### Code Quality
+- **Immutable domain models** with Jackson serialization
+- **Pre-compiled Spark SQL patterns** for schema validation
+- **Thread-safe configuration** via SparkConfig and MongoConfig singletons
+- **Explicit error propagation** from sink to application lifecycle
+- **Unit test coverage** for all transformation logic with mocked Spark sessions

@@ -52,8 +52,8 @@ Build a scalable, low-latency analytics platform that captures granular user int
 |-------|------|--------|--------|---------|
 | 1 | Docker Environment | ✅ Complete | 1.5h | docker-compose.yml, Kafka, MongoDB |
 | 2 | Event Schema | ✅ Complete | 2h | shared-models, ClickEvent, EventType |
-| 3 | **Ingestion API** | ✅ Complete | 6h | Spring Boot, controllers, services, tests |
-| 4 | Spark ETL | Planned | 8h | Session aggregation, MongoDB writes |
+| 3 | Ingestion API | ✅ Complete | 6h | Spring Boot, controllers, services, tests |
+| 4 | **Spark ETL** | ✅ Complete | 8h | 3 parallel streams, MongoDB aggregates |
 | 5 | Real-time Analytics | Planned | 6h | Arrow, WebSocket, live dashboard |
 | 6 | Raw Archiver | Planned | 3h | Parquet, S3, data lake |
 
@@ -88,6 +88,34 @@ Build a scalable, low-latency analytics platform that captures granular user int
 - ✅ Queries use MongoDB indexes for performance
 
 **Rationale:** Analysts need to slice data multiple ways (by user, time range, page) with responsive UI.
+
+#### F5: Session Aggregation (Phase 4)
+
+**Requirement:** Spark ETL continuously aggregates raw Kafka events into curated session, page, and journey collections in MongoDB.
+
+**Acceptance Criteria:**
+- ✅ Session aggregates computed every 30 seconds (micro-batch trigger)
+- ✅ 3 parallel streams: session_aggregates, page_metrics, user_journeys
+- ✅ Session windows use 30-minute inactivity gap
+- ✅ Each stream writes idempotent upserts by composite key
+- ✅ Watermark set to 10 minutes for late event tolerance
+- ✅ MongoDB indexes created at startup
+- ✅ TTL index on page_metrics (30-day retention)
+
+**Rationale:** Pre-aggregated data enables fast queries for dashboards. Parallel streams maximize processing efficiency. Idempotent writes ensure exactly-once semantics despite retries.
+
+#### F6: Crisis Recovery (Phase 4)
+
+**Requirement:** Spark ETL handles failures gracefully without data loss.
+
+**Acceptance Criteria:**
+- ✅ Checkpoint directory persists on restart
+- ✅ Consumer lag recoverable if broker goes down
+- ✅ MongoDB connection failures retried
+- ✅ StreamingQueryMonitor logs query progress
+- ✅ Graceful shutdown stops all streams
+
+**Rationale:** Production stability. Kafka stored offsets, MongoDB upserts survive failures.
 
 #### F3: CORS Support (Phase 3)
 
@@ -299,12 +327,15 @@ See [Code Review Report](../plans/20260418-init-clickstream/code-review-report-2
 - ✅ Rate limiting
 - ⚠️ Security fixes (PII, error handling)
 
-### Phase 4 (Q2 2026)
-- Spark ETL implementation
-- Session aggregation
-- Complex query patterns (funnels, cohorts)
+### Phase 4 (✅ Complete)
+- ✅ Spark Structured Streaming job
+- ✅ 3 parallel aggregation streams
+- ✅ Session/page/journey collections in MongoDB
+- ✅ Idempotent writes with composite key upserts
+- ✅ Checkpoint recovery strategy
+- ✅ TTL index for automatic data expiration
 
-### Phase 5 (Q2 2026)
+### Phase 5 (Q2-Q3 2026)
 - Real-time analytics (Arrow)
 - WebSocket live dashboards
 - Custom event tracking
@@ -330,10 +361,14 @@ See [Code Review Report](../plans/20260418-init-clickstream/code-review-report-2
 ## Documentation Index
 
 - [System Architecture](./system-architecture.md) — Technical design, data flow
-- [Code Standards](./code-standards.md) — Conventions, patterns, testing
+- [Code Standards](./code-standards.md) — Conventions, patterns, best practices, testing
 - **Ingestion API**
   - [README](./ingestion-api/README.md) — Quick start, overview
   - [API Reference](./ingestion-api/api-reference.md) — Endpoint documentation
   - [Configuration](./ingestion-api/configuration.md) — Kafka, MongoDB, rate limiting
   - [Development Guide](./ingestion-api/development-guide.md) — Local setup, testing, debugging
   - [Deployment](./ingestion-api/deployment.md) — Production, scaling, monitoring
+- **Spark ETL (Phase 4)**
+  - [README](../spark-etl/README.md) — Architecture, MongoDB schemas, configuration
+  - [Troubleshooting](../spark-etl/README.md#troubleshooting) — Checkpoint issues, OOM, serialization
+  - [Production Deployment](../spark-etl/README.md#production-cluster-deployment) — Cluster setup, environment variables

@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: clickstream-spark-etl-test
+
+kafka:
+  bootstrap-servers: localhost:9092
+  topic: test-clickstream-events
+  group-id: test-spark-etl-consumer
+  starting-offsets: earliest
+
+mongodb:
+  uri: mongodb://localhost:27017
+  database: clickstream_test_db
+  collections:
+    session-aggregates: test_session_aggregates
+    page-metrics: test_page_metrics
+    user-journeys: test_user_journeys
+
+spark:
+  app-name: clickstream-etl-test
+  master: local[2]
+  checkpoint-location: /tmp/spark-test-checkpoints
+  config:
+    sql.session.window.buffer.in.memory.threshold: 4096
+    sql.streaming.forceDeleteTempCheckpointLocation: true
+    executor.memory: 1g
+    driver.memory: 1g
+
+streaming:
+  trigger:
+    processing-time: 5
+  watermark:
+    delay: 1
+  session:
+    gap: 30
+  page-metrics:
+    window: 5
+
+logging:
+  level:
+    root: WARN
+    com.clickstream: DEBUG
+    org.apache.spark: ERROR
+    org.apache.kafka: ERROR

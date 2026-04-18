@@ -196,21 +196,68 @@ Connection Lifetime: 30min
 
 ### Layer 4: Downstream Consumers (Planned)
 
-#### Phase 4: Spark ETL (Python)
+#### Phase 4: Spark ETL (Java/Spring Boot)
+
+**Status:** ✅ Implemented
+
+Spark Structured Streaming job consuming from Kafka, processing events through three parallel aggregation pipelines, and writing results to MongoDB collections.
 
 ```
 Kafka Consumer (group: spark-etl)
-         ↓ Read events
-  Spark Streaming
-         ↓ Aggregate
-    • Group by userId, sessionId
-    • Calculate session duration, page sequence
-    • Extract metrics (bounce rate, conversion funnel)
-         ↓ Write
-    MongoDB (sessions, page_metrics, user_journeys)
+    [ClickstreamETLJob]
+         ↓
+    Parse JSON + Watermark (10-min late tolerance)
+         ↓
+    ┌──────────────────────────────────────────┐
+    │     THREE PARALLEL AGGREGATION STREAMS   │
+    ├──────────────────────────────────────────┤
+    │                                          │
+    │  Stream 1: Session Aggregates            │
+    │  Window: 30-min gap (session_window)     │
+    │  Output: SessionAggregator               │
+    │  ├─ session_duration                     │
+    │  ├─ pageViewCount, clickCount            │
+    │  ├─ uniquePages, bounceRate              │
+    │  └─ entryPage, exitPage                  │
+    │      ↓ MongoDB upsert by (sessionId, ts) │
+    │                                          │
+    │  Stream 2: Page-Level Metrics            │
+    │  Window: 5-min tumbling window           │
+    │  Output: PageMetricsAggregator           │
+    │  ├─ totalViews, uniqueVisitors           │
+    │  ├─ clickCount, avgScrollDepth           │
+    │  └─ bounceRate                           │
+    │      ↓ MongoDB upsert by (pageUrl, ts)   │
+    │      [TTL: 30 days]                      │
+    │                                          │
+    │  Stream 3: User Journeys                 │
+    │  Window: 30-min gap (session_window)     │
+    │  Output: UserJourneyBuilder              │
+    │  ├─ orderedPages: [url, ts, clicks]      │
+    │  └─ totalSessionDuration                 │
+    │      ↓ MongoDB upsert by (userId, sid)   │
+    │                                          │
+    └──────────────────────────────────────────┘
+         ↓ MongoForeachBatchWriter
+    MongoDB (session_aggregates, page_metrics, user_journeys)
          ↓
     Ready for API queries
 ```
+
+**Key Architecture Details:**
+- **Entry Point:** `SparkETLApplication` (Spring Boot app hosting SparkSession)
+- **Job Orchestrator:** `ClickstreamETLJob` (CommandLineRunner, manages three streams)
+- **Parallelism:** 3 independent transformations run concurrently on same Kafka stream
+- **Sink Pattern:** `foreachBatch()` with `MongoForeachBatchWriter` for idempotent upserts
+- **Checkpoint:** Local filesystem (dev) or HDFS/S3 (prod)
+- **Trigger:** 30-second micro-batches (balance latency vs throughput)
+
+**Configuration:** See [spark-etl/README.md](../spark-etl/README.md) for:
+- MongoDB collection schemas
+- Configuration parameters (Kafka, MongoDB, Spark)
+- Environment variables for production
+- Troubleshooting guide (checkpoint issues, OOM, serialization)
+- Deployment instructions (dev, cluster, production)
 
 #### Phase 5: Real-time Analytics (Arrow)
 

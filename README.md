@@ -276,8 +276,30 @@ clickstream/                              # Maven multi-module monorepo
 ├── ingestion-api/                        # 🔜 Phase 3: Spring Boot REST API
 │   └── (to be implemented)
 │
-├── spark-etl/                            # 🔜 Phase 4: Spark Structured Streaming
-│   └── (to be implemented)
+├── spark-etl/                            # ✅ Phase 4: Spark Structured Streaming
+│   ├── pom.xml
+│   ├── README.md                         # Configuration, schemas, troubleshooting
+│   └── src/
+│       ├── main/java/com/clickstream/etl/
+│       │   ├── SparkETLApplication.java  # Spring Boot entry point
+│       │   ├── config/
+│       │   │   ├── SparkConfig.java      # SparkSession bean
+│       │   │   ├── MongoConfig.java      # MongoClient bean
+│       │   │   └── StreamingQueryMonitor.java  # Query listener for metrics
+│       │   ├── job/
+│       │   │   └── ClickstreamETLJob.java  # Orchestrates 3 parallel streams
+│       │   ├── schema/
+│       │   │   └── EventSchema.java      # Spark SQL schemas
+│       │   ├── transform/
+│       │   │   ├── SessionAggregator.java   # Stream 1: Session metrics
+│       │   │   ├── PageMetricsAggregator.java  # Stream 2: Page-level metrics
+│       │   │   └── UserJourneyBuilder.java  # Stream 3: User journeys
+│       │   ├── sink/
+│       │   │   └── MongoForeachBatchWriter.java  # Batch writer for upserts
+│       │   └── service/
+│       │       └── MongoIndexService.java  # Initialize MongoDB indexes
+│       └── main/resources/
+│           └── application.yml           # Configuration (Kafka, MongoDB, Spark)
 │
 ├── realtime-analytics/                   # 🔜 Phase 5: Arrow in-memory analytics
 │   └── (to be implemented)
@@ -305,19 +327,53 @@ mvn clean install -pl shared-models
 
 # Run tests for specific module
 mvn test -pl shared-models
+
+# Build spark-etl (creates fat JAR)
+mvn clean package -f spark-etl/pom.xml
 ```
+
+### Running Services
+
+**1. Start infrastructure (Docker):**
+```bash
+docker compose up -d
+
+# Verify setup
+bash scripts/verify-setup.sh
+```
+
+**2. Build and run ingestion API (Phase 3):**
+```bash
+cd ingestion-api
+mvn spring-boot:run
+# API running on http://localhost:8081
+```
+
+**3. Build and run Spark ETL (Phase 4):**
+```bash
+cd spark-etl
+mvn spring-boot:run
+
+# View Spark UI: http://localhost:4040
+# Monitor logs for aggregations being written to MongoDB
+```
+
+See [spark-etl/README.md](spark-etl/README.md) for detailed configuration, troubleshooting, and production deployment instructions.
 
 ## Development Workflow
 
-1. **Phase 01:** Dev environment (Docker Compose) ✓
-2. **Phase 02:** Kafka topic design & event schema ✓
-3. **Phase 03:** Spring Boot ingestion API
-4. **Phase 04:** Spark ETL pipeline
+1. **Phase 01:** Dev environment (Docker Compose) ✅
+2. **Phase 02:** Event schema & shared models ✅
+3. **Phase 03:** Spring Boot ingestion API (in progress)
+4. **Phase 04:** Spark ETL pipeline (3 parallel streams) ✅
+   - Session aggregates (30-min windows)
+   - Page metrics (5-min windows, 30-day TTL)
+   - User journeys (ordered page sequences)
 5. **Phase 05:** Real-time analytics service (Arrow)
 6. **Phase 06:** Raw event archiver
 7. **Phase 07:** React frontend (Atomic Design)
 
-See [plans/20260418-init-clickstream/plan.md](plans/20260418-init-clickstream/plan.md) for complete roadmap.
+See [plans/20260418-init-clickstream/plan.md](plans/20260418-init-clickstream/plan.md) for complete roadmap and [spark-etl/README.md](spark-etl/README.md) for Spark ETL details.
 
 ## Key Technologies
 

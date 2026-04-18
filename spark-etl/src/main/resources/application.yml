@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: clickstream-spark-etl
+
+# Kafka Configuration
+kafka:
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  topic: clickstream-events
+  group-id: spark-etl-consumer
+  starting-offsets: earliest
+  # Security (production)
+  properties:
+    security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+    sasl.mechanism: ${KAFKA_SASL_MECHANISM:}
+    sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG:}
+
+# MongoDB Configuration
+mongodb:
+  uri: ${MONGODB_URI:mongodb://localhost:27017}
+  database: clickstream_db
+  collections:
+    session-aggregates: session_aggregates
+    page-metrics: page_metrics
+    user-journeys: user_journeys
+
+# Spark Configuration
+spark:
+  app-name: clickstream-etl
+  master: local[*]  # Use local mode for dev; remove for cluster deployment
+  checkpoint-location: /tmp/spark-checkpoints
+  config:
+    # Session window buffer threshold (KB)
+    sql.session.window.buffer.in.memory.threshold: 4096
+    # Force delete temp checkpoint on restart (dev only)
+    sql.streaming.forceDeleteTempCheckpointLocation: ${SPARK_FORCE_DELETE_CHECKPOINT:true}
+    # Checkpoint retention (production)
+    sql.streaming.minBatchesToRetain: 100
+    # Executor memory (reduced for dev)
+    executor.memory: ${SPARK_EXECUTOR_MEMORY:512m}
+    # Driver memory
+    driver.memory: ${SPARK_DRIVER_MEMORY:1g}
+
+# Streaming Configuration
+streaming:
+  trigger:
+    # Micro-batch interval in seconds
+    processing-time: 30
+  watermark:
+    # Late event tolerance in minutes
+    delay: 10
+  session:
+    # Session window gap in minutes
+    gap: 30
+  page-metrics:
+    # Page metrics window duration in minutes
+    window: 5
+
+logging:
+  level:
+    root: INFO
+    com.clickstream: DEBUG
+    org.apache.spark: WARN
+    org.apache.kafka: WARN
