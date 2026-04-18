@@ -2,7 +2,6 @@ package com.clickstream.validation;
 
 import com.clickstream.model.ClickEvent;
 import com.clickstream.model.EventType;
-import org.springframework.stereotype.Component;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -15,8 +14,11 @@ import java.util.regex.Pattern;
  * <p>Performs business-level validation beyond basic bean validation annotations.
  * Checks for event type consistency, PII exposure, input sanitization, URL format,
  * and field length limits.
+ * 
+ * <p>Note: This is a plain Java class without Spring annotations to keep shared-models
+ * framework-agnostic. Services using Spring should register this as a bean in their
+ * configuration.
  */
-@Component
 public class EventValidator {
 
     // Pre-compiled regex patterns for performance

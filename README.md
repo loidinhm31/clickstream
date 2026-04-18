@@ -22,48 +22,74 @@ Apache Kafka (clickstream-events topic, 6 partitions, sessionId key)
 ### Prerequisites
 
 - Docker & Docker Compose (in WSL for Windows users)
-- Java 17+ (for Spring Boot)
+- Java 17+ (for Spring Boot services)
 - Node.js 18+ & npm (for React frontend)
-- Maven or Gradle
-
-### Frontend Setup (Phase 07)
-
-**Note:** Requires backend services to be running (Kafka, MongoDB, Ingestion API, Real-time Analytics)
-
-```bash
-# Install frontend dependencies
-cd frontend
-npm install
-
-# Start dev server (runs on http://localhost:3000)
-npm run dev
-
-# In another terminal, run tests (requires running backend)
-npm test
-
-# Build for production
-npm run build
-```
-
-**Frontend Services Expected:**
-- **Ingestion API** (http://localhost:8081) — Event submission endpoint
-- **Real-time Analytics** (ws://localhost:8082) — WebSocket metrics stream
-- **Backend requirement:** All infrastructure services must be running with `docker compose up -d`
+- Maven 3.9+ (for building Java services)
 
 ### Quick Start
 
-1. **Start infrastructure services:**
+#### Windows (PowerShell)
 
+**Start All Services:**
+```powershell
+.\start-services.ps1
+```
+
+This starts:
+- Infrastructure (Docker): Kafka, MongoDB, Kafka UI, Spark ETL
+- Application Services: Ingestion API, Real-time Analytics, Raw Archiver
+- Frontend: React application
+
+**Common Commands:**
+```powershell
+.\status.ps1           # Check service status
+.\stop-services.ps1    # Stop everything
+Get-Job | Receive-Job  # View service logs
+```
+
+📖 **See [WINDOWS.md](./WINDOWS.md) for detailed Windows guide**
+
+#### Linux/WSL (Makefile)
+
+**First Time Setup:**
 ```bash
-# Start Kafka, MongoDB, and Kafka UI
-docker compose up -d
+chmod +x setup.sh
+./setup.sh
+```
 
-# Verify setup (runs automated tests)
-bash scripts/verify-setup.sh
+**Start All Services:**
+```bash
+make start-all
+```
+
+**Common Commands:**
+```bash
+make help         # Show all available commands
+make status       # Check service status
+make logs         # View all logs
+make stop-all     # Stop everything
+```
+
+📖 **See [QUICKSTART.md](./QUICKSTART.md) for detailed Makefile guide**
+
+#### Accessing the Application
+
+Once started:
+- Frontend UI: http://localhost:5173
+- Kafka UI: http://localhost:8080
+- MongoDB: mongodb://localhost:27017/clickstream_db
+
+### Manual Setup (Alternative)
+
+If you prefer manual control:
+
+1. **Start infrastructure services:**
+```bash
+docker compose up -d
+bash scripts/verify-setup.sh  # Verify setup
 ```
 
 2. **Access services:**
-
 - **Kafka UI:** http://localhost:8080
 - **Kafka Broker:** localhost:9092
 - **MongoDB:** mongodb://localhost:27017/clickstream_db
@@ -72,13 +98,14 @@ bash scripts/verify-setup.sh
 
 | Service | Port | Description |
 |---------|------|-------------|
-| React Frontend | 3000 | React 19 analytics dashboard (http://localhost:3000) |
+| React Frontend | 5173 | React 19 analytics dashboard (Vite dev server) |
+| Ingestion API | 8081 | Spring Boot REST API for event ingestion (`/api/events`) |
+| Real-time Analytics | 8082 | WebSocket server for live metrics (Arrow IPC protocol) |
+| Raw Archiver | 8083 | Kafka consumer writing raw events to Parquet + health endpoint |
 | Apache Kafka | 9092 | Message broker (KRaft mode), topic: `clickstream-events` (6 partitions) |
 | Kafbat UI | 8080 | Web UI for Kafka inspection and topic monitoring |
 | MongoDB | 27017 | Document database for aggregated session/page data |
-| Ingestion API | 8081 | Spring Boot REST API for event ingestion (`/api/events`) |
-| Real-time Analytics | 8082 | WebSocket server for live metrics (Arrow IPC protocol) |
-| Raw Archiver | — | Kafka consumer writing raw events to Parquet data lake |
+| Spark ETL | — | Structured Streaming job (runs in Docker, logs via docker compose) |
 
 ### Kafka Topics
 

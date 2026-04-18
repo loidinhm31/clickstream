@@ -81,3 +81,9 @@ derby.log
 # Logs
 logs/
 *.log
+
+# Process ID files (from Makefile)
+.pids/
+
+# Data lake (exclude large Parquet files)
+data-lake/
