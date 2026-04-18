@@ -58,6 +58,186 @@ bash scripts/verify-setup.sh
   - Retention: 24 hours (1 day)
   - Consumer groups: spark-etl, realtime-analytics, raw-archiver
 
+## Event Schema (Phase 2)
+
+### JSON Structure
+
+Each event published to `clickstream-events` follows this schema (v1.0):
+
+```json
+{
+  "schemaVersion": "1.0",
+  "eventId": "550e8400-e29b-41d4-a716-446655440000",
+  "userId": "user-abc-123",
+  "sessionId": "sess-xyz-789",
+  "eventType": "CLICK",
+  "targetElement": "button#submit-order",
+  "pageUrl": "https://app.example.com/checkout",
+  "referrerUrl": "https://app.example.com/cart",
+  "timestamp": 1712678400000,
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "metadata": {
+    "x": 450,
+    "y": 320,
+    "viewportWidth": 1920,
+    "viewportHeight": 1080,
+    "elementText": "Place Order"
+  }
+}
+```
+
+**Schema Version Tracking:** Versioned for future compatibility. Currently at `1.0`.
+
+### Supported Event Types
+
+| Type | Triggers | Key Metadata | Example Use Case |
+|------|----------|--------------|------------------|
+| **CLICK** | User clicks interactive element | x, y, targetElement, elementText | Track button clicks, link engagement |
+| **PAGE_VIEW** | Page load or SPA route change | pageUrl, referrerUrl | Funnel analysis, conversion tracking |
+| **SCROLL** | Scrolling past depth threshold (25%, 50%, 75%, 100%) | scrollDepth, viewportWidth, viewportHeight | Content engagement, page section interest |
+| **HOVER** | Mouse hover on element > 500ms | targetElement, durationMs | Feature discovery, UX patterns |
+
+**Note:** eventType determines which metadata fields are populated; others are null and omitted.
+
+### Java Model Usage with Builder Pattern
+
+All models are immutable with private constructors. Use builders for construction:
+
+```java
+// Create a CLICK event
+ClickEvent clickEvent = ClickEvent.builder()
+    .eventId(UUID.randomUUID().toString())
+    .userId("user-abc-123")
+    .sessionId(sessionId)
+    .eventType(EventType.CLICK)
+    .targetElement("button#submit-order")
+    .pageUrl("https://app.example.com/checkout")
+    .referrerUrl("https://app.example.com/cart")
+    .timestamp(System.currentTimeMillis())
+    .userAgent(request.getHeader("User-Agent"))
+    .metadata(EventMetadata.builder()
+        .x(450)
+        .y(320)
+        .elementText("Place Order")
+        .viewportWidth(1920)
+        .viewportHeight(1080)
+        .build())
+    .build();
+
+// Validate before publishing
+EventValidator validator = new EventValidator();
+List<String> errors = validator.validate(clickEvent);
+if (!errors.isEmpty()) {
+    errors.forEach(System.err::println);
+    // Handle validation errors
+}
+
+// Serialize to JSON (Jackson)
+String json = objectMapper.writeValueAsString(clickEvent);
+```
+
+### Metadata Field Reference
+
+All metadata fields are optional and type-specific:
+
+| Field | Type | Range | Event Types | Description |
+|-------|------|-------|-------------|-------------|
+| `x` | Integer | 0-∞ | CLICK | Mouse X coordinate (pixels) |
+| `y` | Integer | 0-∞ | CLICK | Mouse Y coordinate (pixels) |
+| `scrollDepth` | Double | 0.0-1.0 | SCROLL | Scroll depth (0.25, 0.5, 0.75, 1.0) |
+| `viewportWidth` | Integer | 320-∞ | CLICK, SCROLL, HOVER | Viewport width (pixels) |
+| `viewportHeight` | Integer | 480-∞ | CLICK, SCROLL, HOVER | Viewport height (pixels) |
+| `elementText` | String | 0-1024 chars | CLICK | Text content of clicked element |
+| `durationMs` | Long | ≥500 | HOVER | Hover duration (milliseconds) |
+
+## Validation Rules & Security
+
+The `EventValidator` class enforces multiple layers of security and data quality checks:
+
+### Security Validations
+
+- **XSS Prevention:** Blocks scripts, onerror/onclick handlers, iframes in all string fields
+  ```
+  Blocked patterns: <script, javascript:, onerror=, onclick=, <iframe
+  ```
+
+- **PII Detection:** Prevents accidental collection of sensitive data
+  ```
+  Blocked keywords: password, ssn, social security, credit card, cvv, pin
+  ```
+
+- **IP Address Rejection:** Filters out IP addresses (privacy compliance)
+  ```
+  Blocked pattern: X.X.X.X format detection
+  ```
+
+- **Field Length Limits:** Prevents oversized messages and buffer issues
+  ```
+  eventId/userId/sessionId: max 255 chars
+  pageUrl/referrerUrl: max 2048 chars
+  targetElement: max 512 chars
+  elementText: max 1024 chars
+  userAgent: max 8192 chars
+  ```
+
+### Data Quality Validations
+
+- **Timestamp Validation:**
+  - Events must be ≤ 24 hours old
+  - Events allowed up to 5 minutes in future (clock skew tolerance)
+
+- **URL Validation:**
+  - Must be valid HTTP(S) URLs
+  - Validated using URI parsing
+
+- **Event Type Consistency:**
+  - CLICK events must have targetElement and x/y coordinates
+  - PAGE_VIEW events must have pageUrl
+  - SCROLL events must have scrollDepth between 0.0-1.0
+  - HOVER events must have targetElement and durationMs ≥ 500ms
+
+### Usage Example
+
+```java
+EventValidator validator = new EventValidator(
+    86400000L,   // Max event age: 24 hours
+    300000L      // Max future drift: 5 minutes
+);
+
+List<String> errors = validator.validate(event);
+if (errors.isEmpty()) {
+    kafkaTemplate.send("clickstream-events", event.getSessionId(), json);
+} else {
+    logger.warn("Validation failed: {}", String.join(", ", errors));
+}
+```
+
+## Kafka Partitioning Strategy
+
+### Session-Based Partitioning
+
+The `clickstream-events` topic uses **sessionId as the partition key** (not userId):
+
+**Why sessionId over userId?**
+- **Load Distribution:** SessionId naturally avoids hot partitions. High-activity users don't create bottlenecks.
+- **Event Ordering:** All events from one session → same partition → chronological ordering preserved
+- **Efficient Processing:** Spark session windowing works within a single partition; no expensive cross-partition joins
+- **Time Bounded:** Sessions expire (~30-60 min), ensuring even distribution over time
+
+**Alternative rejected (userId):**
+- Creates hot partitions: power users generate 10-100x more events than average
+- Would require complex balancing logic
+
+**Partition Configuration (6 partitions):**
+```
+Topic: clickstream-events
+Replication Factor: 1 (single broker in dev)
+Partitions: 6 (allows parallelism across 3-6 consumer threads)
+Retention: 24 hours (1 day)
+Max Message Size: 1 MB (field length limits enforce this)
+Compression: snappy (default)
+```
+
 ## Project Structure
 
 ```
@@ -80,7 +260,7 @@ clickstream/
 ## Development Workflow
 
 1. **Phase 01:** Dev environment (Docker Compose) ✓
-2. **Phase 02:** Kafka topic design & event schema
+2. **Phase 02:** Kafka topic design & event schema ✓
 3. **Phase 03:** Spring Boot ingestion API
 4. **Phase 04:** Spark ETL pipeline
 5. **Phase 05:** Real-time analytics service (Arrow)
