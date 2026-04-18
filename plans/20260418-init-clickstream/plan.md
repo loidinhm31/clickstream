@@ -82,3 +82,55 @@ See inline diagram above in chat, or `research/researcher-01-report.md` for deta
 - **Embedded Spark in Spring Boot for dev** — standalone submit for prod
 - **foreachBatch sink to MongoDB** — more control than Mongo Spark Connector streaming
 - **Kafbat UI** for Kafka inspection during development
+
+## Multi-Module Maven Architecture
+
+**Restructured:** 2026-04-18
+
+The project has been refactored from a monolithic structure to a Maven multi-module monorepo to accommodate the five planned services while avoiding codebase complexity. This ensures:
+- **Clean service boundaries** — Each service (ingestion-api, spark-etl, realtime-analytics, raw-archiver) has its own directory
+- **Shared model reuse** — Common event models, validators, and Kafka utilities live in `shared-models/` module
+- **Centralized dependency management** — Parent POM manages Spring Boot, Kafka, Spark, Arrow versions
+- **Independent builds** — Each module can be built/tested in isolation with `mvn -pl <module-name>`
+- **Future-ready** — Prepared for microservices deployment if needed
+
+### Module Structure
+
+```
+clickstream/                               # Parent POM (dependency management)
+├── pom.xml                                # Spring Boot 3.2.4, Kafka 3.7.0, Spark 3.5.1, Arrow 15.0.2
+├── .mvn/settings.xml                      # Maven Central mirror (corporate Artifactory bypass)
+│
+├── shared-models/                         # ✅ Phase 2 deliverables
+│   ├── pom.xml                            # Child module (depends on parent)
+│   └── src/main/java/com/clickstream/
+│       ├── model/                         # EventType, EventMetadata, ClickEvent
+│       ├── validation/                    # EventValidator (XSS/PII/URL validation)
+│       └── kafka/                         # KafkaProducerExample (partition key)
+│
+├── ingestion-api/                         # 🔜 Phase 3: Spring Boot REST API
+│   └── (depends on shared-models)
+│
+├── spark-etl/                             # 🔜 Phase 4: Spark Structured Streaming → MongoDB
+│   └── (depends on shared-models)
+│
+├── realtime-analytics/                    # 🔜 Phase 5: Arrow in-memory + WebSocket
+│   └── (depends on shared-models)
+│
+├── raw-archiver/                          # 🔜 Phase 6: Parquet writer → Data Lake
+│   └── (depends on shared-models)
+│
+└── frontend/                              # 🔜 Phase 7: React application
+    └── (separate build system - npm/Vite)
+```
+
+### Build Commands
+
+```bash
+# From root directory
+mvn clean install            # Build all modules
+mvn test                     # Test all modules
+mvn test -pl shared-models   # Test specific module
+```
+
+**Rationale:** As noted by user, "we will have many services to run, for that each service should in one folder/directory to avoid messy codebase." This structure scales to 5+ services without losing organization or clarity.

@@ -241,20 +241,70 @@ Compression: snappy (default)
 ## Project Structure
 
 ```
-clickstream/
-├── docker-compose.yml          # Infrastructure setup
+clickstream/                              # Maven multi-module monorepo
+├── pom.xml                               # Parent POM (dependency management)
+├── .mvn/
+│   └── settings.xml                      # Maven Central mirror configuration
+├── docker-compose.yml                    # Infrastructure setup (Kafka, MongoDB)
 ├── scripts/
-│   └── verify-setup.sh         # Automated verification
-├── plans/                      # Implementation plans
+│   └── verify-setup.sh                   # Automated verification
+├── plans/                                # Implementation plans
 │   └── 20260418-init-clickstream/
-│       ├── plan.md             # Master plan
-│       └── phase-*.md          # Detailed phase plans
-└── [TBD: service directories]
-    ├── ingestion-api/          # Spring Boot REST API
-    ├── spark-etl/              # Spark Structured Streaming
-    ├── realtime-analytics/     # Arrow in-memory analytics
-    ├── raw-archiver/           # Parquet writer
-    └── frontend/               # React application
+│       ├── plan.md                       # Master plan
+│       └── phase-*.md                    # Detailed phase plans
+│
+├── shared-models/                        # ✅ Phase 2: Shared event models & validators
+│   ├── pom.xml
+│   ├── .mvn/
+│   │   └── settings.xml
+│   └── src/
+│       ├── main/java/com/clickstream/
+│       │   ├── model/
+│       │   │   ├── EventType.java        # Enum: CLICK, PAGE_VIEW, SCROLL, HOVER
+│       │   │   ├── EventMetadata.java    # Builder pattern (immutable)
+│       │   │   └── ClickEvent.java       # Builder pattern (immutable)
+│       │   ├── validation/
+│       │   │   └── EventValidator.java   # Validation with XSS/PII patterns
+│       │   └── kafka/
+│       │       └── KafkaProducerExample.java
+│       └── test/java/com/clickstream/
+│           ├── model/
+│           │   └── ClickEventSerializationTest.java  # 12 tests
+│           └── validation/
+│               └── EventValidatorTest.java           # 43 tests
+│
+├── ingestion-api/                        # 🔜 Phase 3: Spring Boot REST API
+│   └── (to be implemented)
+│
+├── spark-etl/                            # 🔜 Phase 4: Spark Structured Streaming
+│   └── (to be implemented)
+│
+├── realtime-analytics/                   # 🔜 Phase 5: Arrow in-memory analytics
+│   └── (to be implemented)
+│
+├── raw-archiver/                         # 🔜 Phase 6: Parquet writer
+│   └── (to be implemented)
+│
+└── frontend/                             # 🔜 Phase 7: React application
+    └── (to be implemented)
+```
+
+### Building the Project
+
+From the root directory:
+
+```bash
+# Build all modules
+mvn clean install
+
+# Run tests for all modules
+mvn clean test
+
+# Build specific module
+mvn clean install -pl shared-models
+
+# Run tests for specific module
+mvn test -pl shared-models
 ```
 
 ## Development Workflow
