@@ -5,10 +5,13 @@ import com.clickstream.archiver.writer.ParquetEventWriter;
 import com.clickstream.model.ClickEvent;
 import com.clickstream.model.EventMetadata;
 import com.clickstream.model.EventType;
+import com.clickstream.validation.EventValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -30,6 +33,7 @@ class RawEventArchiverTest {
     private ArchiverConfig config;
     private ParquetEventWriter writer;
     private ObjectMapper objectMapper;
+    private EventValidator validator;
     
     @TempDir
     Path tempDir;
@@ -47,8 +51,9 @@ class RawEventArchiverTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules(); // For Java 8 date/time support
         
+        validator = new EventValidator();
         writer = new ParquetEventWriter(config);
-        archiver = new RawEventArchiver(config, writer, objectMapper);
+        archiver = new RawEventArchiver(config, writer, objectMapper, validator);
     }
     
     @Test
@@ -72,6 +77,7 @@ class RawEventArchiverTest {
     }
     
     @Test
+    @DisabledOnOs(value = OS.WINDOWS, disabledReason = "Hadoop winutils.exe not available on Windows - run in Docker/WSL")
     void consume_shouldFlushWhenThresholdReached() throws Exception {
         // Given: Events at threshold
         for (int i = 0; i < 10; i++) {
@@ -111,6 +117,7 @@ class RawEventArchiverTest {
         assertEquals(0, stats.totalEventsProcessed());
     }
     
+    @DisabledOnOs(value = OS.WINDOWS, disabledReason = "Hadoop winutils.exe not available on Windows - run in Docker/WSL")
     @Test
     void shutdown_shouldFlushRemainingEvents() throws Exception {
         // Given: Events in buffer
@@ -130,6 +137,7 @@ class RawEventArchiverTest {
         assertEquals(1, stats.totalBatchesFlushed());
     }
     
+    @DisabledOnOs(value = OS.WINDOWS, disabledReason = "Hadoop winutils.exe not available on Windows - run in Docker/WSL")
     @Test
     void getStats_shouldReturnCurrentStatistics() throws Exception {
         // Given: Some events processed
@@ -155,20 +163,23 @@ class RawEventArchiverTest {
     
     private ClickEvent createTestEvent(int id) {
         EventMetadata metadata = EventMetadata.builder()
-                .eventId("event-" + id)
-                .eventType(EventType.CLICK)
-                .timestamp(Instant.now())
-                .schemaVersion("1.0")
+                .x(100)
+                .y(200)
+                .viewportWidth(1920)
+                .viewportHeight(1080)
                 .build();
         
         return ClickEvent.builder()
-                .metadata(metadata)
+                .eventId("event-" + id)
                 .userId("user-" + id)
                 .sessionId("session-" + (id % 3))
+                .eventType(EventType.CLICK)
                 .targetElement("#button-" + id)
                 .pageUrl("https://example.com/page")
                 .referrerUrl("https://example.com/ref")
+                .timestamp(System.currentTimeMillis())
                 .userAgent("Test Agent")
+                .metadata(metadata)
                 .build();
     }
 }

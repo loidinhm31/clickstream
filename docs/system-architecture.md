@@ -23,10 +23,10 @@ Comprehensive technical architecture of the Clickstream Analytics platform.
                         │                │                │
                     Phase 4         Phase 5          Phase 6
                     Spark ETL      Real-time       Raw Archiver
-                    (Python)       Analytics       (Python)
+                    (Python)       Analytics       (Java/Spring)
                         │          (Arrow)              │
-                    MongoDB         WebSocket         S3
-                    Collections     Frontend       Data Lake
+                    MongoDB         WebSocket       Data Lake
+                    Collections     Frontend        (Parquet)
 ```
 
 ---
@@ -138,7 +138,7 @@ Request: GET /api/analytics/sessions?userId=u1&page=0&size=20
 │ Consumer Groups:                                    │
 │ ├─ spark-etl: process → aggregate → MongoDB        │
 │ ├─ realtime-analytics: stream → Arrow memory       │
-│ └─ raw-archiver: serialize → Parquet → S3          │
+│ └─ raw-archiver: buffer → Parquet → data-lake      │
 └─────────────────────────────────────────────────────┘
 ```
 

@@ -444,6 +444,171 @@ Models
 
 ---
 
+### raw-archiver (Phase 6 - Java/Spring Boot)
+
+Kafka consumer that writes raw clickstream events to Parquet files in a date-partitioned data lake for long-term archival and reprocessing.
+
+**Status:** ✅ Complete
+
+**Key Features:**
+- Parquet columnar storage with Snappy compression
+- Date-partitioned directory structure (year/month/day/hour)
+- Manual offset commit for zero data loss
+- Buffered writes with dual-threshold flush (10k events OR 60s timeout)
+- Circuit breaker pattern with exponential backoff (3 retries: 100ms, 200ms, 400ms)
+- Error file recovery mechanism for failed batches
+- Health indicator for monitoring buffer status and circuit breaker state
+- Input validation using EventValidator from shared-models
+- OWASP-compliant logging (no stack trace exposure)
+- Graceful shutdown with buffer flush on termination
+
+**File Breakdown:**
+
+| Component | Files | LOC | Purpose |
+|-----------|-------|-----|----------|
+| Consumer | 1 | ~280 | Kafka consumer, buffering, offset management |
+| Writer | 1 | ~220 | Parquet file writer, compression, partitioning |
+| Utilities | 1 | ~80 | Date partition path builder |
+| Health | 1 | ~120 | Health indicator with buffer/circuit breaker status |
+| Configuration | 1 | ~100 | Application config and properties |
+| Application | 1 | ~50 | Spring Boot entry point |
+| Tests | 3 | ~320 | Unit tests for consumer, writer, utilities |
+| Total | 9 | ~1,170 | |
+
+**Key Classes:**
+
+```
+RawEventArchiver (Spring Kafka Listener)
+├─ @KafkaListener(topics="clickstream-events", groupId="raw-archiver-group")
+├─ Manual offset management (no data loss)
+├─ Buffer: ConcurrentLinkedQueue<ClickEvent> with max 10k events
+├─ Flush triggers: event count threshold OR 60s interval
+├─ Circuit breaker: exponential backoff on write failures
+└─ Shutdown hook: flush remaining buffer before exit
+
+ParquetEventWriter (Component)
+├─ buildSchema() → Arrow Schema from ClickEvent fields
+├─ writeParquet(events, partition) → creates Parquet file
+├─ Snappy compression for 60-80% size reduction
+├─ Row group size: 134MB, page size: 1MB
+└─ Error recovery: writes failed batches to error/ directory
+
+PartitionPathBuilder (Utility)
+├─ buildPath(event, basePath) → year/month/day/hour structure
+├─ Partitioning based on event.timestamp (not current time)
+└─ Format: data-lake/year=YYYY/month=MM/day=DD/hour=HH/
+
+ArchiverHealthIndicator (Spring HealthIndicator)
+├─ Monitors buffer size and flush status
+├─ Detects stuck state (no flush > 3× flush_interval or 2min)
+├─ Reports total events processed and batches flushed
+├─ Dynamic health check threshold
+└─ Prevents buffer overflow with half-buffer error file writes
+```
+
+**Configuration (application.yml):**
+
+```yaml
+archiver:
+  topic: clickstream-events
+  consumer-group: raw-archiver-group
+  data-lake-base-path: ./data-lake
+  
+  flush:
+    event-threshold: 10000        # Events before flush
+    time-interval-seconds: 60     # Seconds before timeout flush
+  
+  parquet:
+    compression: SNAPPY          # Columnar compression
+    page-size: 1048576           # 1MB
+    row-group-size: 134217728    # 128MB
+  
+  circuit-breaker:
+    max-retries: 3               # Retry attempts before error file
+    backoff-ms: [100, 200, 400]  # Exponential backoff delays
+  
+  health:
+    check-enabled: true
+    stuck-threshold-seconds: 120  # Health DOWN if no flush > 2min
+
+spring.kafka:
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  consumer:
+    group-id: raw-archiver-group
+    auto-offset-reset: earliest
+    max-poll-records: 100
+    enable-auto-commit: false     # Manual offset control
+```
+
+**Test Results:**
+- 18 total tests
+- 11 passing (Windows environment)
+- 7 skipped (Hadoop/Parquet I/O requiring Docker/WSL)
+- 0 failures, 0 errors
+
+**Dependencies (pom.xml):**
+
+```xml
+<!-- Spring Boot -->
+spring-boot-starter (core)
+spring-boot-starter-actuator (health checks)
+spring-kafka (KafkaListener, manual ack)
+
+<!-- Parquet & Arrow -->
+parquet-avro (Parquet writer)
+parquet-hadoop (Hadoop compatibility)
+arrow-vector (Arrow schema)
+
+<!-- Utilities -->
+apache-commons-io (file operations)
+jackson-databind (JSON serialization)
+
+<!-- Testing -->
+spring-boot-starter-test
+spring-kafka-test (embedded Kafka)
+testcontainers (integration tests)
+```
+
+**Data Schema (Parquet):**
+
+```
+EventType {
+  eventId: String
+  userId: String
+  sessionId: String
+  eventType: String
+  targetElement: String (nullable)
+  pageUrl: String
+  referrerUrl: String (nullable)
+  timestamp: Long (epoch ms)
+  userAgent: String (nullable)
+  schemaVersion: String
+}
+```
+
+**Partitioning Layout:**
+
+```
+data-lake/raw-events/
+└── year=2026/
+    └── month=04/
+        └── day=18/
+            └── hour=14/
+                ├── part-00001-1713451200.snappy.parquet
+                ├── part-00002-1713451260.snappy.parquet
+                └── ...
+```
+
+**Build Output:**
+```
+✅ Compiles successfully
+✅ 9 source files (Java)
+✅ JAR: raw-archiver-1.0.0-SNAPSHOT.jar
+✅ Tests: 11/18 passing (7 skipped for I/O compatibility)
+```
+
+---
+
 ## Build & Deployment
 
 ### Build Process

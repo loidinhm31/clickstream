@@ -76,7 +76,7 @@ public class ParquetEventWriter {
             
             log.info("Successfully wrote {} events to {}", events.size(), filePath);
         } catch (IOException e) {
-            log.error("Failed to write events to {}: {}", filePath, e.getMessage(), e);
+            log.error("Failed to write {} events to {}: {}", events.size(), filePath, e.getMessage());  // No stack trace (OWASP compliance)
             throw e;
         }
     }
@@ -87,18 +87,18 @@ public class ParquetEventWriter {
     private GenericRecord convertToAvroRecord(ClickEvent event) {
         GenericRecord record = new GenericData.Record(avroSchema);
         
-        record.put("eventId", event.getMetadata().getEventId());
+        record.put("eventId", event.getEventId());
         record.put("userId", event.getUserId());
         record.put("sessionId", event.getSessionId());
-        record.put("eventType", event.getMetadata().getEventType().name());
+        record.put("eventType", event.getEventType().name());
         record.put("targetElement", event.getTargetElement());
         record.put("pageUrl", event.getPageUrl());
         record.put("referrerUrl", event.getReferrerUrl());
-        record.put("timestamp", event.getMetadata().getTimestamp().toEpochMilli());
+        record.put("timestamp", event.getTimestamp());
         record.put("userAgent", event.getUserAgent());
         
-        // Serialize metadata as JSON string for flexibility
-        record.put("schemaVersion", event.getMetadata().getSchemaVersion());
+        // Schema version from ClickEvent
+        record.put("schemaVersion", event.getSchemaVersion());
         
         return record;
     }

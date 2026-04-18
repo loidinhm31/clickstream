@@ -12,6 +12,8 @@ import org.apache.parquet.hadoop.ParquetReader;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -47,6 +49,7 @@ class ParquetEventWriterTest {
     }
     
     @Test
+    @DisabledOnOs(value = OS.WINDOWS, disabledReason = "Hadoop winutils.exe not available on Windows - run in Docker/WSL")
     void write_shouldCreateParquetFile() throws IOException {
         // Given
         List<ClickEvent> events = createTestEvents(10);
@@ -59,6 +62,7 @@ class ParquetEventWriterTest {
         assertTrue(Files.exists(java.nio.file.Path.of(filePath)));
     }
     
+    @DisabledOnOs(value = OS.WINDOWS, disabledReason = "Hadoop winutils.exe not available on Windows - run in Docker/WSL")
     @Test
     void write_shouldCreateParentDirectories() throws IOException {
         // Given
@@ -72,6 +76,7 @@ class ParquetEventWriterTest {
         assertTrue(Files.exists(java.nio.file.Path.of(filePath)));
     }
     
+    @DisabledOnOs(value = OS.WINDOWS, disabledReason = "Hadoop winutils.exe not available on Windows - run in Docker/WSL")
     @Test
     void write_shouldWriteCorrectNumberOfRecords() throws IOException {
         // Given
@@ -86,11 +91,12 @@ class ParquetEventWriterTest {
         assertEquals(100, recordCount);
     }
     
+    @DisabledOnOs(value = OS.WINDOWS, disabledReason = "Hadoop winutils.exe not available on Windows - run in Docker/WSL")
     @Test
     void write_shouldPreserveEventData() throws IOException {
         // Given
         ClickEvent originalEvent = createTestEvents(1).get(0);
-        String filePath = tempDir.resolve("test.snappy.parquet").toString();
+        String filePath = tempDir.resolve("test. snappy.parquet").toString();
         
         // When
         writer.write(List.of(originalEvent), filePath);
@@ -98,10 +104,10 @@ class ParquetEventWriterTest {
         // Then: Read back and verify fields
         GenericRecord record = readFirstRecord(filePath);
         assertNotNull(record);
-        assertEquals(originalEvent.getMetadata().getEventId(), record.get("eventId").toString());
+        assertEquals(originalEvent.getEventId(), record.get("eventId").toString());
         assertEquals(originalEvent.getUserId(), record.get("userId").toString());
         assertEquals(originalEvent.getSessionId(), record.get("sessionId").toString());
-        assertEquals(originalEvent.getMetadata().getEventType().name(), record.get("eventType").toString());
+        assertEquals(originalEvent.getEventType().name(), record.get("eventType").toString());
         assertEquals(originalEvent.getPageUrl(), record.get("pageUrl").toString());
     }
     
@@ -156,20 +162,23 @@ class ParquetEventWriterTest {
         List<ClickEvent> events = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             EventMetadata metadata = EventMetadata.builder()
-                    .eventId("event-" + i)
-                    .eventType(EventType.CLICK)
-                    .timestamp(Instant.now())
-                    .schemaVersion("1.0")
+                    .x(100)
+                    .y(200)
+                    .viewportWidth(1920)
+                    .viewportHeight(1080)
                     .build();
             
             ClickEvent event = ClickEvent.builder()
-                    .metadata(metadata)
+                    .eventId("event-" + i)
                     .userId("user-" + i)
                     .sessionId("session-" + (i % 10))
+                    .eventType(EventType.CLICK)
                     .targetElement("#button-" + i)
                     .pageUrl("https://example.com/page-" + i)
                     .referrerUrl("https://example.com/ref")
+                    .timestamp(System.currentTimeMillis())
                     .userAgent("Mozilla/5.0 Test")
+                    .metadata(metadata)
                     .build();
             
             events.add(event);
