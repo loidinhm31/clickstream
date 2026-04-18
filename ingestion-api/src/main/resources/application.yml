@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: clickstream-ingestion-api
+  
+  # Kafka producer configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: 1  # Leader ack for low latency (use 'all' for production)
+      compression-type: lz4
+      batch-size: 16384
+      linger-ms: 5  # Small batch window for low latency
+      retries: 3
+      retry-backoff-ms: 100
+  
+  # MongoDB configuration
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/clickstream_db
+      auto-index-creation: false  # Disable auto-index for production
+      
+# MongoDB connection pool configuration (production)
+spring.data.mongodb:
+  max-pool-size: 100
+  min-pool-size: 10
+  max-connection-idle-time: 60000  # 60 seconds
+  max-connection-life-time: 1800000  # 30 minutes
+
+# Server configuration
+server:
+  port: 8081  # 8080 reserved for Kafka UI
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.clickstream: DEBUG
+    org.springframework.kafka: INFO
+    org.springframework.data.mongodb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Application-specific configuration
+clickstream:
+  kafka:
+    topic: clickstream-events
+  batch:
+    max-size: 100  # Max events per batch request
+  rate-limit:
+    requests-per-second: 1000  # Per client IP
+    enabled: true

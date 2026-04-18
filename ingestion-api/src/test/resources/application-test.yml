@@ -1,0 +1,17 @@
+# Override Kafka bootstrap servers for embedded Kafka tests
+spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}
+spring.kafka.producer.bootstrap-servers=${spring.embedded.kafka.brokers}
+
+# Test-specific MongoDB (overridden by Testcontainers)
+spring.data.mongodb.uri=mongodb://localhost:27017/test_clickstream_db
+
+# Disable auto-index creation in tests
+spring.data.mongodb.auto-index-creation=false
+
+# Test logging
+logging.level.com.clickstream=DEBUG
+logging.level.org.springframework.kafka=WARN
+logging.level.org.testcontainers=INFO
+
+# Test batch size
+clickstream.batch.max-size=100

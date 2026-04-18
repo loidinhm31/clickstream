@@ -61,7 +61,7 @@ See inline diagram above in chat, or `research/researcher-01-report.md` for deta
 |---|-------|--------|--------|------|
 | 1 | Dev environment (Docker Compose) | Done | 3h | [phase-01](./phase-01-dev-environment.md) |
 | 2 | Kafka topic design & event schema | Done | 3h | [phase-02](./phase-02-kafka-design.md) |
-| 3 | Spring Boot ingestion API | Pending | 6h | [phase-03](./phase-03-ingestion-api.md) |
+| 3 | Spring Boot ingestion API | Done | 6h | [phase-03](./phase-03-ingestion-api.md) |
 | 4 | Spark ETL pipeline | Pending | 8h | [phase-04](./phase-04-spark-etl.md) |
 | 5 | Real-time analytics service (Arrow) | Pending | 8h | [phase-05](./phase-05-realtime-analytics.md) |
 | 6 | Raw event archiver | Pending | 3h | [phase-06](./phase-06-raw-archiver.md) |
@@ -108,7 +108,7 @@ clickstream/                               # Parent POM (dependency management)
 │       ├── validation/                    # EventValidator (XSS/PII/URL validation)
 │       └── kafka/                         # KafkaProducerExample (partition key)
 │
-├── ingestion-api/                         # 🔜 Phase 3: Spring Boot REST API
+├── ingestion-api/                         # ✅ Phase 3: Spring Boot REST API
 │   └── (depends on shared-models)
 │
 ├── spark-etl/                             # 🔜 Phase 4: Spark Structured Streaming → MongoDB

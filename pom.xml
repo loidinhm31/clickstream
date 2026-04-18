@@ -21,7 +21,7 @@
         
         <!-- Dependency versions -->
         <spring-boot.version>3.2.4</spring-boot.version>
-        <kafka.version>3.7.0</kafka.version>
+        <kafka.version>3.6.1</kafka.version>
         <spark.version>3.5.1</spark.version>
         <arrow.version>15.0.2</arrow.version>
         <junit.version>5.10.2</junit.version>
@@ -29,8 +29,8 @@
 
     <modules>
         <module>shared-models</module>
+        <module>ingestion-api</module>
         <!-- Future modules -->
-        <!-- <module>ingestion-api</module> -->
         <!-- <module>spark-etl</module> -->
         <!-- <module>realtime-analytics</module> -->
         <!-- <module>raw-archiver</module> -->
