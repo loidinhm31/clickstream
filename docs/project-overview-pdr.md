@@ -54,8 +54,9 @@ Build a scalable, low-latency analytics platform that captures granular user int
 | 2 | Event Schema | ✅ Complete | 2h | shared-models, ClickEvent, EventType |
 | 3 | Ingestion API | ✅ Complete | 6h | Spring Boot, controllers, services, tests |
 | 4 | **Spark ETL** | ✅ Complete | 8h | 3 parallel streams, MongoDB aggregates |
-| 5 | Real-time Analytics | Planned | 6h | Arrow, WebSocket, live dashboard |
-| 6 | Raw Archiver | Planned | 3h | Parquet, S3, data lake |
+| 5 | **Real-time Analytics** | ✅ Complete | 6h | Arrow ring buffer, WebSocket, HTTP pull |  
+| 6 | **Raw Archiver** | ✅ Complete | 4h | Kafka consumer, Parquet, date-partitioned data lake |
+| 7 | React Frontend | Planned | 10h | Dashboard, real-time charts, session replay |
 
 ---
 
@@ -116,6 +117,53 @@ Build a scalable, low-latency analytics platform that captures granular user int
 - ✅ Graceful shutdown stops all streams
 
 **Rationale:** Production stability. Kafka stored offsets, MongoDB upserts survive failures.
+
+#### F7: Real-time Metrics Engine (Phase 5)
+
+**Requirement:** Service maintains a 15-minute sliding window of Apache Arrow columnar event data and computes real-time metrics (active users, click rate, trending pages) every 1.5 seconds.
+
+**Acceptance Criteria:**
+- ✅ Apache Arrow ring buffer with max 900 batches (15 min @ 1 batch/sec)
+- ✅ Off-heap memory using Netty allocator (512MB configurable limit)
+- ✅ Automatic eviction of old batches beyond 15-minute window
+- ✅ Metrics computed in 3 sliding windows: active users (5min), click rate (1min), trending pages (15min)
+- ✅ Thread-safe batch ingestion and concurrent metric queries
+- ✅ Detailed JavaDoc on memory management and thread safety
+
+**Rationale:** Columnar format (Arrow) enables fast aggregate computation over millions of events. Sliding window keeps memory bounded while providing historical context. Off-heap storage reduces GC pressure.
+
+#### F8: Real-time Metrics Delivery (Phase 5)
+
+**Requirement:** Deliver metrics to clients via REST API (pull) and WebSocket (push) in Apache Arrow IPC binary format.
+
+**Acceptance Criteria:**
+- ✅ HTTP GET `/api/realtime/metrics` returns Arrow IPC binary (application/octet-stream)
+- ✅ WebSocket endpoint `/ws/realtime/metrics` pushes Arrow IPC frames every 1.5 seconds
+- ✅ Rate limiting: max 5 WebSocket connections per client IP
+- ✅ Binary WebSocket (no STOMP middleware) for low overhead
+- ✅ Centralized CORS configuration from application.yml (allowed-origins applied to both HTTP and WebSocket)
+- ✅ Health check endpoint with Kafka consumer status
+- ✅ Metrics observable by apache-arrow npm (JavaScript), pyarrow (Python), ArrowStreamReader (Java)
+
+**Rationale:** Arrow IPC format is compact, language-agnostic, and efficient for network transfer. WebSocket push reduces client polling overhead. Rate limiting prevents abuse. Centralized CORS ensures consistency.
+
+#### F9: Raw Event Archival (Phase 6)
+
+**Requirement:** Kafka consumer writes raw clickstream events to a date-partitioned Parquet data lake for long-term compliance, auditing, and future reprocessing.
+
+**Acceptance Criteria:**
+- ✅ Kafka consumer (group: raw-archiver-group) reads all events from clickstream-events topic
+- ✅ Manual offset management: offsets committed ONLY after successful Parquet write
+- ✅ In-memory buffering with dual flush triggers: 10k events OR 60 seconds (whichever first)
+- ✅ Parquet files written to date-partitioned directory: `year=/month=/day=/hour=/`
+- ✅ Partitioning by event timestamp (not current time) for correct bucket assignment
+- ✅ Snappy compression for efficient storage (target: 40-50% size reduction)
+- ✅ Row group size: 128MB, Page size: 1MB
+- ✅ Circuit breaker: retry failed writes up to 3 times, write to error directory on exhaustion
+- ✅ Health indicator at `/actuator/health` detects stuck-state (no flush > 5 minutes)
+- ✅ Clear buffer after flush (success or error) to allow new events to process
+
+**Rationale:** Durability layer ensures no data loss and enables compliance. Parquet columnar format enables efficient Spark/Trino analytics on historical data. Date partitioning enables easy retention policies and parallel batch processing. Manual offset management prevents duplication and data loss simultaneously.
 
 #### F3: CORS Support (Phase 3)
 

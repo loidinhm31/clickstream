@@ -139,6 +139,45 @@ services:
       retries: 3
       start_period: 20s
 
+  # Spark ETL - Structured Streaming job for real-time aggregations
+  # Consumes clickstream events from Kafka, performs window aggregations,
+  # and writes session/user journey data to MongoDB
+  # Built from local spark-etl/ directory with Dockerfile
+  # Connects to Kafka via DOCKER listener (kafka:9094) and MongoDB via internal network
+  spark-etl:
+    build:
+      context: ./spark-etl
+      dockerfile: Dockerfile
+    container_name: spark-etl
+    environment:
+      # Kafka configuration
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+      KAFKA_TOPIC: clickstream-events
+      KAFKA_GROUP_ID: spark-etl-consumer
+      
+      # MongoDB configuration
+      MONGODB_URI: mongodb://mongodb:27017/clickstream_db
+      
+      # Spark configuration
+      SPARK_MASTER: local[*]
+      SPARK_APP_NAME: clickstream-etl
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - clickstream-net
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: 2
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "java.*spark-etl"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
 volumes:
   kafka-data:
   mongo-data:

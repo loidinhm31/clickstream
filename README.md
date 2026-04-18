@@ -9,11 +9,12 @@ React Frontend (micro-events)
     ↓
 Spring Boot Ingestion API
     ↓
-Apache Kafka (clickstream-events topic)
+Apache Kafka (clickstream-events topic, 6 partitions, sessionId key)
     ↓
     ├─→ Spark ETL → MongoDB (aggregated sessions)
-    ├─→ Real-time Analytics (Arrow in-memory) → WebSocket → Frontend
-    └─→ Raw Archiver → Parquet Data Lake
+    ├─→ Real-time Analytics → Arrow in-memory → WebSocket → Frontend
+    └─→ Raw Archiver → Parquet Data Lake (date-partitioned)
+         (6 of 7 phases complete)
 ```
 
 ## Development Environment
@@ -47,9 +48,11 @@ bash scripts/verify-setup.sh
 
 | Service | Port | Description |
 |---------|------|-------------|
-| Apache Kafka | 9092 | Message broker (KRaft mode) |
-| Kafbat UI | 8080 | Web UI for Kafka inspection |
-| MongoDB | 27017 | Document database for aggregated data |
+| Apache Kafka | 9092 | Message broker (KRaft mode), topic: `clickstream-events` (6 partitions) |
+| Kafbat UI | 8080 | Web UI for Kafka inspection and topic monitoring |
+| MongoDB | 27017 | Document database for aggregated session/page data |
+| Ingestion API | 8081 | Spring Boot REST API for event ingestion (`/api/events`) |
+| Raw Archiver | — | Kafka consumer writing raw events to Parquet data lake |
 
 ### Kafka Topics
 

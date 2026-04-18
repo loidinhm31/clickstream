@@ -6,6 +6,7 @@ import com.clickstream.etl.transform.PageMetricsAggregator;
 import com.clickstream.etl.transform.SessionAggregator;
 import com.clickstream.etl.transform.UserJourneyBuilder;
 import jakarta.annotation.PreDestroy;
+import org.apache.spark.api.java.function.VoidFunction2;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -109,10 +110,10 @@ public class ClickstreamETLJob implements CommandLineRunner {
         pageMetricsQuery = startPageMetricsAggregation(rawStream);
         journeyQuery = startUserJourneyBuilding(rawStream);
         
-        logger.info(\"All streaming queries started successfully\");
-        logger.info(\"Session query: {}\", sessionQuery.id());
-        logger.info(\"Page metrics query: {}\", pageMetricsQuery.id());
-        logger.info(\"Journey query: {}\", journeyQuery.id());
+        logger.info("All streaming queries started successfully");
+        logger.info("Session query: {}", sessionQuery.id());
+        logger.info("Page metrics query: {}", pageMetricsQuery.id());
+        logger.info("Journey query: {}", journeyQuery.id());
         
         // Queries run in background; application stays alive
     }
@@ -122,24 +123,24 @@ public class ClickstreamETLJob implements CommandLineRunner {
      */
     @PreDestroy
     public void shutdown() {
-        logger.info(\"Shutting down streaming queries gracefully...\");
+        logger.info("Shutting down streaming queries gracefully...");
         
         try {
             if (sessionQuery != null && sessionQuery.isActive()) {
                 sessionQuery.stop();
-                logger.info(\"Session query stopped\");
+                logger.info("Session query stopped");
             }
             if (pageMetricsQuery != null && pageMetricsQuery.isActive()) {
                 pageMetricsQuery.stop();
-                logger.info(\"Page metrics query stopped\");
+                logger.info("Page metrics query stopped");
             }
             if (journeyQuery != null && journeyQuery.isActive()) {
                 journeyQuery.stop();
-                logger.info(\"Journey query stopped\");
+                logger.info("Journey query stopped");
             }
-            logger.info(\"All streaming queries stopped successfully\");
+            logger.info("All streaming queries stopped successfully");
         } catch (Exception e) {
-            logger.error(\"Error during streaming query shutdown\", e);
+            logger.error("Error during streaming query shutdown", e);
         }
     }
     
@@ -166,7 +167,7 @@ public class ClickstreamETLJob implements CommandLineRunner {
                 .select("event.*")
                 // Convert timestamp from epoch millis to Spark timestamp
                 .withColumn("timestamp", 
-                        from_unixtime(col("timestamp").divide(1000)))
+                        to_timestamp(from_unixtime(col("timestamp").divide(1000))))
                 // Apply watermark for late event handling
                 .withWatermark("timestamp", watermarkDelayMinutes + " minutes");
     }
@@ -181,7 +182,7 @@ public class ClickstreamETLJob implements CommandLineRunner {
                 rawStream, sessionGapMinutes);
         
         return sessionAggregates.writeStream()
-                .foreachBatch((batchDf, batchId) -> 
+                .foreachBatch((VoidFunction2<Dataset<Row>, Long>) (batchDf, batchId) -> 
                         mongoWriter.writeBatch(batchDf, batchId, sessionAggregatesCollection))
                 .option("checkpointLocation", 
                         checkpointLocation + "/sessions")
@@ -199,7 +200,7 @@ public class ClickstreamETLJob implements CommandLineRunner {
                 rawStream, pageMetricsWindowMinutes);
         
         return pageMetrics.writeStream()
-                .foreachBatch((batchDf, batchId) -> 
+                .foreachBatch((VoidFunction2<Dataset<Row>, Long>) (batchDf, batchId) -> 
                         mongoWriter.writeBatch(batchDf, batchId, pageMetricsCollection))
                 .option("checkpointLocation", 
                         checkpointLocation + "/page-metrics")
@@ -217,7 +218,7 @@ public class ClickstreamETLJob implements CommandLineRunner {
                 rawStream, sessionGapMinutes);
         
         return userJourneys.writeStream()
-                .foreachBatch((batchDf, batchId) -> 
+                .foreachBatch((VoidFunction2<Dataset<Row>, Long>) (batchDf, batchId) -> 
                         mongoWriter.writeBatch(batchDf, batchId, userJourneysCollection))
                 .option("checkpointLocation", 
                         checkpointLocation + "/user-journeys")

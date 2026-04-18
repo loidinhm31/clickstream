@@ -40,7 +40,7 @@ public class KafkaProducerConfig {
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         
         // Performance & Reliability
-        config.put(ProducerConfig.ACKS_CONFIG, "1");  // Leader ack
+        config.put(ProducerConfig.ACKS_CONFIG, "all");  // All replicas ack (required for idempotence)
         config.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         config.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);  // 16KB
         config.put(ProducerConfig.LINGER_MS_CONFIG, 5);  // 5ms batch window

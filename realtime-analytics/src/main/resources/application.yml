@@ -1,0 +1,46 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: realtime-analytics
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: realtime-analytics-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.clickstream.model
+        spring.json.type.mapping: clickEvent:com.clickstream.model.ClickEvent
+    listener:
+      ack-mode: batch
+
+# Apache Arrow Configuration
+arrow:
+  allocator:
+    limit: 536870912  # 512MB max memory for Arrow buffers
+
+# Metrics Engine Configuration
+metrics:
+  ring-buffer:
+    max-batches: 900  # 15 minutes at 1 batch/second
+    batch-interval-ms: 1000
+  windows:
+    active-users-seconds: 300     # 5 minutes
+    clicks-per-second: 60          # 1 minute
+    trending-pages-seconds: 900    # 15 minutes
+    event-rate-seconds: 60         # 1 minute
+  websocket:
+    push-interval-ms: 1500  # Push every 1.5 seconds
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:5173
+
+# Logging
+logging:
+  level:
+    com.clickstream.realtime: INFO
+    org.springframework.kafka: INFO
+    org.apache.arrow: WARN

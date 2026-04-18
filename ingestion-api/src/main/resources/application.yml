@@ -8,7 +8,7 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      acks: 1  # Leader ack for low latency (use 'all' for production)
+      acks: all  # Required for idempotent producer
       compression-type: lz4
       batch-size: 16384
       linger-ms: 5  # Small batch window for low latency

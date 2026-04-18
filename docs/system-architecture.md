@@ -259,33 +259,407 @@ Kafka Consumer (group: spark-etl)
 - Troubleshooting guide (checkpoint issues, OOM, serialization)
 - Deployment instructions (dev, cluster, production)
 
-#### Phase 5: Real-time Analytics (Arrow)
+#### Phase 5: Real-time Analytics (Spring Boot + Apache Arrow)
+
+**Status:** ✅ Implemented
+
+Service that maintains a 15-minute sliding window of Apache Arrow columnar event data and serves real-time metrics via REST API and WebSocket.
+
+**Architecture:**
 
 ```
 Kafka Consumer (group: realtime-analytics)
-         ↓ Read events
-    Apache Arrow (in-memory)
-         ↓ Store
-    Arrow in-memory tables per session
-         ↓ Stream
-    WebSocket → Frontend
-         ↓
-    Live dashboards update
+         ↓ Batch: up to 500 events/poll
+    Apache Arrow Ring Buffer
+    ├─ Max 900 batches (15 min @ 1 batch/sec)
+    ├─ Columnar VectorSchemaRoot per batch
+    └─ Off-heap Netty allocator (512MB default)
+         ↓ Every 1.5 seconds
+    Compute Metrics:
+    ├─ Active Users (5-min window)
+    ├─ Click Rate (1-min window)
+    ├─ Trending Pages (15-min window)
+    └─ Event Rate (1-min window)
+         │
+         ├─→ HTTP GET /api/realtime/metrics
+         │   └─ Arrow IPC binary (on-demand)
+         │
+         ├─→ WS /ws/realtime/metrics
+         │   └─ Arrow IPC frames (push every 1.5s)
+         │
+         └─→ GET /api/realtime/health
+             └─ Kafka consumer status
 ```
 
-#### Phase 6: Raw Archiver (Python)
+**Key Components:**
+
+1. **MetricsEngine** — Ring buffer management, metric computation
+   - Thread-safe ConcurrentLinkedDeque for batch storage
+   - Automatic eviction of batches older than 15 minutes
+   - Sliding window calculations over Arrow columnar data
+
+2. **EventConsumer** — Kafka listener with batch ack mode
+   - Ingests events in batches up to 500 per poll
+   - Feeds MetricsEngine via ingestBatch()
+   - Health check tracks last successful consume (fails if > 5 min silence)
+
+3. **ArrowIPCSerializer** — Data serialization layer
+   - Converts ArrowMetricsSnapshot to Arrow IPC Stream
+   - Binary format: platform-agnostic, efficient for network transfer
+   - Supports JavaScript (apache-arrow npm), Python (pyarrow), Java (Arrow SDK)
+
+4. **RealtimeMetricsHandler** — WebSocket push mechanism
+   - Endpoint: `/ws/realtime/metrics`
+   - Rate limiting: max 5 connections per client IP
+   - Push interval: 1.5 seconds (configurable)
+   - Auto-detects broken connections
+
+5. **RealtimeController** — REST API endpoints
+   - GET `/api/realtime/metrics` — Arrow IPC binary (pull-based)
+   - GET `/api/realtime/health` — Service health with Kafka status
+   - GET `/api/realtime/stats` — Engine statistics (monitoring)
+
+6. **Configuration** — Centralized settings
+   - WebSocketConfig, KafkaConsumerConfig, CorsConfig, KafkaConfigValidator
+   - Spring CORS configuration applied to both HTTP and WebSocket
+   - Allowed origins: configurable from application.yml
+
+**Data Schema (Arrow VectorSchemaRoot):**
+```
+Events Ring Buffer:
+  Field: userId (Utf8)
+  Field: sessionId (Utf8)
+  Field: eventType (Utf8)
+  Field: pageUrl (Utf8)
+  Field: timestamp (Int64 epoch millis)
+  
+Metrics Output:
+  Field: activeUsers (Int32)
+  Field: clicksPerSecond (Float64)
+  Field: eventRate (Float64)
+  Field: computedAt (Int64 epoch millis)
+  Field: trendingPages (nested struct[])
+    └─ pageUrl (Utf8), viewCount (Int32)
+```
+
+**Memory Management:**
+- Apache Arrow off-heap storage via Netty allocator
+- Configurable total memory limit (default 512MB)
+- Auto-eviction when ring buffer exceeds 900 batches
+- Monitor via GET `/api/realtime/stats` → memoryUsedMB, memoryLimitMB
+
+**Configuration (src/main/resources/application.yml):**
+```yaml
+server:
+  port: 8082
+
+metrics:
+  ring-buffer:
+    max-batches: 900                 # 900 batches = 15 min @ 1 batch/sec
+  windows:
+    active-users-seconds: 300        # 5-minute window
+    clicks-per-second: 60            # 1-minute window
+    trending-pages-seconds: 900      # 15-minute window
+    event-rate-seconds: 60           # 1-minute window
+  websocket:
+    push-interval-ms: 1500           # Push every 1.5 seconds
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:5173
+
+arrow:
+  allocator:
+    limit: 536870912                 # 512MB
+```
+
+**API Usage Examples:**
+
+*HTTP Pull (Fallback):*
+```bash
+curl http://localhost:8082/api/realtime/metrics --output metrics.bin
+```
+
+*WebSocket Push (Real-time):*
+```javascript
+const arrow = require('apache-arrow');
+const ws = new WebSocket('ws://localhost:8082/ws/realtime/metrics');
+ws.binaryType = 'arraybuffer';
+ws.onmessage = (event) => {
+  const reader = arrow.RecordBatchReader.from(new Uint8Array(event.data));
+  const table = reader.readAll();
+  console.log(`Active Users: ${table.getChild('activeUsers').toArray()}`);
+};
+```
+
+*Health Check:*
+```bash
+curl http://localhost:8082/api/realtime/health
+```
+
+**See Also:** [realtime-analytics/README.md](../realtime-analytics/README.md) for setup, configuration, testing, and troubleshooting.
+
+#### Phase 6: Raw Event Archiver (Java Spring Boot)
+
+**Status:** ✅ COMPLETE
+
+**Responsibility:** Durable long-term archival of raw clickstream events in Parquet columnar format for batch reprocessing, compliance, and data lake analytics.
 
 ```
-Kafka Consumer (group: raw-archiver)
-         ↓ Read events
-    Convert to Parquet
-         ↓ Partition
-    By date: s3://bucket/clickstream/2026-04-18/
+┌──────────────────────────────────────────────────┐
+│ Raw Event Archiver (Spring Boot)                 │
+├──────────────────────────────────────────────────┤
+│ Kafka Consumer (group: raw-archiver-group)       │
+│ ├─ Poll: up to 500 events at 6-second intervals  │
+│ ├─ Topic: clickstream-events (all 6 partitions)  │
+│ └─ Partition key: sessionId affinity             │
+├──────────────────────────────────────────────────┤
+│ Event Buffer (In-Memory)                         │
+│ ├─ Capacity: 10,000 events or 60 seconds (first) │
+│ ├─ Thread-safe LinkedList<ClickEvent>            │
+│ └─ Flush triggers:                               │
+│    1. Buffer reaches 10k events                   │
+│    2. 60 seconds elapsed since last flush         │
+│    3. Graceful shutdown initiated                │
+├──────────────────────────────────────────────────┤
+│ Parquet Writer (with Retry & Circuit Breaker)    │
+│ ├─ Compression: Snappy (high speed, good ratio)  │
+│ ├─ Page Size: 1MB                                │
+│ ├─ Row Group Size: 128MB                         │
+│ ├─ Schema: 10 fields (eventId, userId, ...)      │
+│ └─ On failure (after 3 retries):                 │
+│    • Write to error files (data-lake/errors/)    │
+│    • Clear buffer to continue processing         │
+│    • Log error with timestamp for recovery       │
+├──────────────────────────────────────────────────┤
+│ Offset Management (Manual Mode)                  │
+│ ├─ Acknowledge each event immediately            │
+│ ├─ Commit offsets ONLY after successful write    │
+│ ├─ On failure: offsets not committed             │
+│ └─ Result: No data loss, filtered duplicates     │
+├──────────────────────────────────────────────────┤
+│ Health Indicator                                 │
+│ ├─ Endpoint: GET /actuator/health                │
+│ ├─ Detects: Stuck-state (no flush > 5 min)      │
+│ ├─ Reports: lastFlushTime, bufferedEventCount    │
+│ └─ Status: UP or DOWN (with diagnostic details)  │
+└──────────────────────────────────────────────────┘
          ↓
-    S3 Data Lake
-         ↓
-    Query via Trino/Athena
+    Data Lake Storage
+         ├─ Location: ./data-lake/ (configurable)
+         ├─ Path scheme: year/month/day/hour/
+         └─ Partitioning by EVENT TIMESTAMP
+             (enables efficient range queries)
 ```
+
+**Architecture Highlights:**
+
+1. **Kafka Consumer** 
+   - Manual batch acknowledgment mode
+   - 6-second poll interval with 500-event batch size
+   - No auto-commit (prevents offset loss before write)
+
+2. **Event Buffer**
+   - In-memory LinkedList<ClickEvent>
+   - Copy buffer for writing (async I/O outside lock)
+   - Thread-safe with minimal lock contention
+
+3. **Parquet Writer**
+   - Uses Apache Parquet Java API
+   - Snappy compression (fast, ~40% reduction)
+   - 128MB row groups for parallel query execution
+   - Timestamps stored as epoch milliseconds (Int64)
+
+4. **Offset Management** (Critical for Data Loss Prevention)
+   - **Step 1:** Event read from Kafka
+   - **Step 2:** Event added to buffer, immediate ack
+   - **Step 3:** On flush, batch attempt to write Parquet
+   - **Step 4:** After successful write, commit offset
+   - **Step 5:** On failure, buffer cleared, offset NOT committed
+   - **Result:** No data loss + tolerable duplicates (tunable via batch size)
+
+5. **Circuit Breaker**
+   - Retries failed Parquet writes up to 3 times
+   - Writes to error directory after exhausting retries
+   - Clears buffer to allow new events to process
+   - Supports manual recovery of error files
+
+**Data Lake Directory Structure:**
+
+```
+data-lake/
+├── raw-events/                           # Main partition directory
+│   ├── year=2026/
+│   │   ├── month=01/
+│   │   │   ├── day=01/hour=00/          # First hour of Jan 1
+│   │   │   │   ├── part-00001-1704067200000.snappy.parquet
+│   │   │   │   ├── part-00002-1704067200000.snappy.parquet
+│   │   │   │   └── part-00003-1704067200000.snappy.parquet
+│   │   │   ├── day=01/hour=01/
+│   │   │   └── day=01/hour=02/
+│   │   │
+│   │   ├── month=04/
+│   │   │   ├── day=17/hour=22/
+│   │   │   ├── day=17/hour=23/
+│   │   │   ├── day=18/hour=00/
+│   │   │   ├── day=18/hour=01/
+│   │   │   │   └── part-00001-1713451200000.snappy.parquet
+│   │   │   └── ...
+│   │   └── month=05/
+│   │
+│   └── errors/                           # Failed batches for recovery
+│       ├── failed-batch-2026-04-18-08-23-45.parquet
+│       ├── failed-batch-2026-04-18-10-15-12.parquet
+│       └── ...
+│
+└── _metadata                             # Optional Spark/Trino metadata file
+```
+
+**Parquet Schema (10 Fields):**
+
+| Field | Type | Precision | Notes |
+|-------|------|-----------|-------|
+| eventId | string | 36 (UUID) | Unique event identifier |
+| userId | string | 255 | User identifier |
+| sessionId | string | 255 | Session identifier |
+| eventType | string | 20 | CLICK, PAGE_VIEW, SCROLL, HOVER |
+| targetElement | string (nullable) | 500 | HTML selector or element ID |
+| pageUrl | string | 2048 | Full page URL |
+| referrerUrl | string (nullable) | 2048 | Referrer URL |
+| timestamp | long | 19 | Epoch milliseconds (sortable) |
+| userAgent | string (nullable) | 500 | Browser user agent |
+| schemaVersion | string | 10 | Event schema version (1.0) |
+
+**Configuration (application.yml):**
+
+```yaml
+server:
+  port: 8083
+  shutdown: graceful
+  servlet:
+    shutdown-wait-time: 30s
+
+spring:
+  application:
+    name: raw-archiver
+
+kafka:
+  bootstrap-servers: localhost:9092
+  consumer:
+    group-id: raw-archiver-group
+    auto-offset-reset: earliest
+    enable-auto-commit: false           # Manual offset management
+    max-poll-records: 500               # Batch size
+    session-timeout-ms: 30000
+
+archiver:
+  topic: clickstream-events
+  data-lake-base-path: ./data-lake      # Can override with env var
+  flush:
+    event-threshold: 10000              # Flush after 10k events
+    time-interval-seconds: 60           # Or after 60 seconds
+  parquet:
+    compression: SNAPPY
+    page-size: 1048576                  # 1MB
+    row-group-size: 134217728           # 128MB
+  health:
+    stuck-detection-minutes: 5          # DOWN if no flush in 5 min
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: always
+```
+
+**Environment Variables:**
+
+```bash
+# Override defaults
+export KAFKA_BOOTSTRAP_SERVERS="kafka-prod:9092"
+export DATA_LAKE_PATH="/mnt/data-lake"
+export FLUSH_EVENT_THRESHOLD="50000"    # Higher for production
+export FLUSH_INTERVAL_SECONDS="120"     # Longer for efficiency
+```
+
+**Monitoring & Health Endpoint:**
+
+```bash
+# Check service status
+curl http://localhost:8083/actuator/health
+
+# Response (UP)
+{
+  "status": "UP",
+  "components": {
+    "raw-archiver": {
+      "status": "UP",
+      "details": {
+        "lastFlushTime": 1713451920000,
+        "bufferedEventCount": 2341,
+        "totalEventsProcessed": 1234567,
+        "totalEventsArchived": 1234500,
+        "lastFlushReason": "EVENT_THRESHOLD"
+      }
+    },
+    "kafkaConsumer": {
+      "status": "UP",
+      "details": {
+        "consumerGroup": "raw-archiver-group",
+        "assignedPartitions": 6,
+        "lag": 125
+      }
+    }
+  }
+}
+
+# Response (DOWN - Stuck State)
+{
+  "status": "DOWN",
+  "components": {
+    "raw-archiver": {
+      "status": "DOWN",
+      "details": {
+        "reason": "NO_FLUSH_IN_5_MINUTES",
+        "lastFlushTime": 1713451200000,
+        "minutesSinceLastFlush": 12,
+        "bufferedEventCount": 5678
+      }
+    }
+  }
+}
+```
+
+**Critical Data Loss Prevention Guarantees:**
+
+✅ **No duplicates if healthy:** Manual offset commit after write succeeds  
+✅ **No data loss on failure:** Offset not committed if write fails  
+✅ **Graceful degradation:** Errors written to recovery directory  
+✅ **Observability:** Health indicator detects stuck states  
+✅ **Offset management:** Batch model with immediate ack per event  
+
+**Known Issues & Mitigations:**
+
+1. **Maven Artifactory dependency** 
+   - Requires JFrog credentials for build
+   - Mitigation: Contact IT for access or disable in settings.xml (dev only)
+
+2. **Concurrent partition processing**
+   - Multiple consumer threads writing simultaneously
+   - Mitigation: Separate directories per hourly partition (no conflicts)
+
+3. **Disk space monitoring**
+   - Data lake can grow large over time
+   - Mitigation: Implement retention policies, archive old partitions to S3
+
+4. **Duplicate tolerance**
+   - Extreme failures may result in <= N duplicate events 
+   - Mitigation: Idempotent schema: `PARTITION BY (year, month, day, hour)`
+
+**See Also:** [raw-archiver/README.md](../raw-archiver/README.md) for complete setup, deployment, and troubleshooting.
+
 
 ---
 
@@ -304,30 +678,49 @@ Kafka Consumer (group: raw-archiver)
    └─ Publish to Kafka (async)
    └─ Return 202 Accepted
 
-3. KAFKA TOPIC
-   └─ clickstream-events partition (based on sessionId)
-   └─ Event persisted, retention 24h
+3. KAFKA TOPIC: clickstream-events
+   └─ Event partitioned by sessionId (load-balanced across 6 partitions)
+   └─ Retained for 24 hours
+   └─ Three consumer groups read simultaneously
 
-4. SPARK ETL (Consumer 1)
-   └─ Read event from Kafka
-   └─ Aggregate: {userId, sessionId, eventCount, pages visited, ...}
-   └─ Write to MongoDB collections
+4. PATH A: SPARK ETL (Consumer 1 — Aggregation)
+   └─ Read event from Kafka (group: spark-etl)
+   └─ Aggregate: {userId, sessionId, eventCount, pages, bounceRate}
+   └─ Window: 30-min gap for session detection
+   └─ Write to MongoDB (upsert by sessionId)
+   └─ TTL: 90 days (default)
 
-5. REAL-TIME ANALYTICS (Consumer 2)
-   └─ Read event from Kafka
-   └─ Keep in-memory Arrow table
-   └─ Push via WebSocket to frontend
+5. PATH B: REAL-TIME ANALYTICS (Consumer 2 — Live Metrics)
+   └─ Read event from Kafka (group: realtime-analytics)
+   └─ Keep 15-min sliding window in Arrow memory
+   └─ Compute: activeUsers, clickRate, event count
+   └─ Push via WebSocket every 1.5 seconds to frontend
 
-6. RAW ARCHIVER (Consumer 3)
-   └─ Read event from Kafka
-   └─ Convert to Parquet
-   └─ Write to S3 data lake
+6. PATH C: RAW ARCHIVER (Consumer 3 — Durability)
+   └─ Read event from Kafka (group: raw-archiver-group)
+   └─ Buffer in memory (10k events or 60 seconds)
+   └─ Write to Parquet file (date-partitioned)
+   └─ Manual offset commit after successful write
+   └─ Date partitioning: year/month/day/hour/ (event timestamp)
 
-7. ANALYTICS QUERIES (API)
+7. ANALYTICS QUERIES (API + Frontend)
    └─ Frontend queries GET /api/analytics/sessions
    └─ API reads from MongoDB (aggregated by Spark)
-   └─ Return paginated results
+   └─ Return paginated results with 200ms latency
+   
+8. LONG-TERM ANALYSIS (Future)
+   └─ Spark batch jobs query Parquet files
+   └─ Run compliance reports, retention analysis
+   └─ Recover data from raw archive if needed
 ```
+
+**Key Characteristics:**
+
+- **Parallelism:** Three independent consumer groups → no blocking between pipelines
+- **Durability:** Raw archiver ensures no data loss with manual offset strategy
+- **Latency:** Spark ETL (event-time latency ~30s), Real-time (sub-second push), Raw (eventual write)
+- **Storage:** MongoDB (90-day TTL for aggregates), Parquet (indefinite retention by date partition)
+
 
 ---
 

@@ -43,22 +43,14 @@ public class SessionAggregator {
      */
     public Dataset<Row> aggregate(Dataset<Row> rawEvents, int sessionGapMinutes) {
         // Define session window (gap-based windowing)
-        String sessionGap = sessionGapMinutes + " minutes";
+        String sessionGap = sessionGapMinutes + "minutes";
         
-        // Window spec for ordering within each session
-        var sessionWindow = Window
-                .partitionBy("sessionId", "userId")
-                .orderBy("timestamp");
-        
-        // First, add entry/exit page information using window functions
-        Dataset<Row> enriched = rawEvents
-                .withColumn("entryPage", 
-                        first("pageUrl").over(sessionWindow))
-                .withColumn("exitPage", 
-                        last("pageUrl").over(sessionWindow));
+        // Create struct with timestamp and pageUrl for ordering
+        Dataset<Row> eventsWithStruct = rawEvents
+                .withColumn("pageInfo", struct(col("timestamp"), col("pageUrl")));
         
         // Aggregate by session window
-        Dataset<Row> aggregated = enriched
+        Dataset<Row> aggregated = eventsWithStruct
                 .groupBy(
                         session_window(col("timestamp"), sessionGap),
                         col("sessionId"),
@@ -68,8 +60,9 @@ public class SessionAggregator {
                         col("session_window.start").alias("windowStart"),
                         col("session_window.end").alias("windowEnd"),
                         
-                        // Session duration
-                        expr("max(timestamp) - min(timestamp)").alias("durationMs"),
+                        // Session duration in milliseconds
+                        expr("(unix_timestamp(max(timestamp)) - unix_timestamp(min(timestamp))) * 1000")
+                                .alias("durationMs"),
                         
                         // Event counts by type
                         count(when(col("eventType").equalTo("PAGE_VIEW"), 1))
@@ -82,11 +75,16 @@ public class SessionAggregator {
                         // Unique pages visited
                         collect_set("pageUrl").alias("uniquePages"),
                         
-                        // Entry and exit pages (first/last by time)
-                        first("entryPage").alias("entryPage"),
-                        first("exitPage").alias("exitPage")
+                        // Collect all page info structs for sorting
+                        collect_list("pageInfo").alias("pageInfoList")
                 )
-                .drop("session_window");
+                .drop("session_window")
+                
+                // Sort page info by timestamp and extract entry/exit pages
+                .withColumn("sortedPages", expr("array_sort(pageInfoList, (left, right) -> CASE WHEN left.timestamp < right.timestamp THEN -1 WHEN left.timestamp > right.timestamp THEN 1 ELSE 0 END)"))
+                .withColumn("entryPage", expr("sortedPages[0].pageUrl"))
+                .withColumn("exitPage", expr("sortedPages[size(sortedPages)-1].pageUrl"))
+                .drop("pageInfoList", "sortedPages");
         
         // Calculate bounce rate (single page AND < 10 seconds)
         return aggregated

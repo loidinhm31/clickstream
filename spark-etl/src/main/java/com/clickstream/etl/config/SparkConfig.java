@@ -41,7 +41,11 @@ public class SparkConfig {
 
     @Value("${spark.config.executor.memory}")
     private String executorMemory;
-private final StreamingQueryMonitor queryMonitor;
+
+    @Value("${spark.config.driver.memory}")
+    private String driverMemory;
+
+    private final StreamingQueryMonitor queryMonitor;
 
     public SparkConfig(StreamingQueryMonitor queryMonitor) {
         this.queryMonitor = queryMonitor;
@@ -63,6 +67,8 @@ private final StreamingQueryMonitor queryMonitor;
                         forceDeleteTempCheckpoint)
                 .config("spark.executor.memory", executorMemory)
                 .config("spark.driver.memory", driverMemory)
+                // Disable Spark UI to avoid javax.servlet/jakarta.servlet conflict with Spring Boot 3.x
+                .config("spark.ui.enabled", "false")
                 // Suppress excessive Spark logging
                 .config("spark.sql.adaptive.enabled", "true")
                 .config("spark.sql.adaptive.coalescePartitions.enabled", "true")

@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: raw-archiver
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: raw-archiver-group
+      auto-offset-reset: earliest      # don't miss events on first run
+      enable-auto-commit: false         # manual commit after Parquet write
+      max-poll-records: 1000            # batch size for processing
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual                  # enables Acknowledgment parameter
+
+archiver:
+  topic: clickstream-events
+  data-lake-base-path: ${DATA_LAKE_PATH:./data-lake}
+  flush:
+    event-threshold: ${FLUSH_EVENT_THRESHOLD:10000}  # flush every N events
+    time-interval-seconds: ${FLUSH_INTERVAL_SECONDS:60}  # or every N seconds
+  parquet:
+    compression: SNAPPY
+    page-size: 1048576                  # 1MB (default)
+    row-group-size: 134217728           # 128MB (default)
+
+logging:
+  level:
+    root: INFO
+    com.clickstream.archiver: DEBUG
+    org.apache.kafka: WARN
+    org.apache.parquet: WARN

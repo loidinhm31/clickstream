@@ -50,6 +50,37 @@ clickstream/                           # Root project
 │       └── controller/
 │           ├── EventControllerIntegrationTest.java
 │           └── AnalyticsControllerIntegrationTest.java
+├── realtime-analytics/               # Phase 5 module (Spring Boot + Arrow)
+│   ├── pom.xml
+│   ├── src/main/java/com/clickstream/realtime/
+│   │   ├── RealtimeApplication.java          # Main entry point
+│   │   ├── config/                           # Spring configuration
+│   │   │   ├── WebSocketConfig.java          # WebSocket endpoint setup
+│   │   │   ├── KafkaConsumerConfig.java      # Kafka listener factory
+│   │   │   ├── CorsConfig.java               # HTTP CORS policy
+│   │   │   └── KafkaConfigValidator.java     # Pre-startup validation
+│   │   ├── controller/                       # REST Controllers
+│   │   │   └── RealtimeController.java       # /api/realtime/* endpoints
+│   │   ├── engine/                           # Core metrics engine
+│   │   │   ├── MetricsEngine.java            # Ring buffer, metrics computation
+│   │   │   ├── ArrowMetricsSnapshot.java     # Immutable metrics snapshot
+│   │   │   └── TimestampedBatch.java         # Batch with ingestion timestamp
+│   │   ├── kafka/                            # Kafka consumer
+│   │   │   └── EventConsumer.java            # Batch listener, health check
+│   │   ├── serialization/                    # Data serialization
+│   │   │   └── ArrowIPCSerializer.java       # Arrow IPC binary formatter
+│   │   └── websocket/                        # WebSocket handler
+│   │       └── RealtimeMetricsHandler.java   # Binary push, rate limiting
+│   ├── src/main/resources/
+│   │   ├── application.yml                   # Metrics, WebSocket, Arrow config
+│   │   └── application-test.yml
+│   └── src/test/java/com/clickstream/realtime/
+│       ├── engine/
+│       │   └── MetricsEngineTest.java        # Ring buffer, eviction tests
+│       ├── serialization/
+│       │   └── ArrowIPCSerializerTest.java   # IPC serialization round-trip
+│       └── integration/
+│           └── RealtimeAnalyticsIntegrationTest.java  # End-to-end Kafka→WebSocket
 ├── shared-models/                    # Phase 2 module (shared)
 ├── spark-etl/                        # Phase 4 module
 └── .mvn/

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "eventId":  "evt_test_001",
+  "userId": "user_demo_123",
+  "sessionId": "sess_demo_456",
+  "eventType": "PAGE_VIEW",
+  "pageUrl": "https://example.com/products",
+  "referrerUrl": "https://google.com",
+  "timestamp": 17451354000000,
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "metadata": {
+    "version": "1.0",
+    "viewportWidth": 1920,
+    "viewportHeight": 1080,
+    "deviceType": "desktop",
+    "screenResolution": "1920x1080"
+  }
+}

@@ -62,54 +62,16 @@ public class PageMetricsAggregator {
                         // Average scroll depth
                         avg(when(col("eventType").equalTo("SCROLL"), 
                                 col("metadata.scrollDepth")))
-                                .alias("avgScrollDepth")
+                                .alias("avgScrollDepth"),
+                        
+                        // Placeholder for bounce rate (requires stateful processing)
+                        // Will be implemented in future phase with stream-stream join watermarks
+                        lit(0.0).alias("bounceRate")
                 )
                 .drop("window");
         
-        // Second pass: calculate bounce rate (sessions with only 1 page AND < 10 sec)
-        // Create a session-level bounce indicator first
-        Dataset<Row> sessionBounces = rawEvents
-                .groupBy(
-                        window(col("timestamp"), windowDuration),
-                        col("sessionId"),
-                        col("pageUrl"))
-                .agg(
-                        col("window.start").alias("windowStart"),
-                        collect_set("pageUrl").alias("pagesInSession"),
-                        // Calculate duration in seconds (timestamps are already Spark timestamp type)
-                        expr("max(unix_timestamp(timestamp)) - min(unix_timestamp(timestamp))")
-                                .alias("sessionDurationSeconds")
-                )
-                .withColumn("isBounce", 
-                        expr("size(pagesInSession) = 1 AND sessionDurationSeconds < 10"))
-                .groupBy(col("pageUrl"), col("windowStart"))
-                .agg(
-                        (sum(when(col("isBounce"), 1).otherwise(0))
-                                .divide(count("*")))
-                                .alias("bounceRate")
-                );
-        
-        // Join bounce rate with page metrics
-        Dataset<Row> result = pageMetrics
-                .join(sessionBounces, 
-                        pageMetrics.col("pageUrl").equalTo(sessionBounces.col("pageUrl"))
-                                .and(pageMetrics.col("windowStart")
-                                        .equalTo(sessionBounces.col("windowStart"))),
-                        "left")
-                .select(
-                        pageMetrics.col("pageUrl"),
-                        pageMetrics.col("windowStart"),
-                        pageMetrics.col("windowEnd"),
-                        pageMetrics.col("totalViews"),
-                        pageMetrics.col("uniqueVisitors"),
-                        pageMetrics.col("clickCount"),
-                        pageMetrics.col("avgScrollDepth"),
-                        coalesce(sessionBounces.col("bounceRate"), lit(0.0))
-                                .alias("bounceRate")
-                );
-        
         // Add composite key for MongoDB upsert
-        return result.withColumn("_compositeKey",
+        return pageMetrics.withColumn("_compositeKey",
                 concat(col("pageUrl"), lit("_"), col("windowStart")));
     }
 }

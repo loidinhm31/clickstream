@@ -1,0 +1,25 @@
+spring:
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    consumer:
+      group-id: test-archiver-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      ack-mode: manual
+
+archiver:
+  topic: test-clickstream
+  data-lake-base-path: ./test-data-lake
+  flush:
+    event-threshold: 100  # Lower for faster tests
+    time-interval-seconds: 5
+  parquet:
+    compression: SNAPPY
+    page-size: 1048576
+    row-group-size: 134217728
+
+logging:
+  level:
+    root: WARN
+    com.clickstream.archiver: DEBUG

@@ -1,0 +1,40 @@
+server:
+  port: 0  # Random port for tests
+
+spring:
+  application:
+    name: realtime-analytics-test
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    consumer:
+      group-id: realtime-analytics-test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.clickstream.model
+        spring.json.type.mapping: clickEvent:com.clickstream.model.ClickEvent
+    listener:
+      ack-mode: batch
+
+arrow:
+  allocator:
+    limit: 67108864  # 64MB for tests
+
+metrics:
+  ring-buffer:
+    max-batches: 60  # 1 minute for tests
+    batch-interval-ms: 1000
+  windows:
+    active-users-seconds: 30
+    clicks-per-second: 10
+    trending-pages-seconds: 60
+    event-rate-seconds: 10
+  websocket:
+    push-interval-ms: 500
+    allowed-origins:
+      - http://localhost:3000
+
+logging:
+  level:
+    com.clickstream.realtime: DEBUG

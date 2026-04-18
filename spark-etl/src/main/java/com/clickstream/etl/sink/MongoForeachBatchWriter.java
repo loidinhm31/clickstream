@@ -61,7 +61,9 @@ public class MongoForeachBatchWriter implements Serializable {
                 
                 long rowCount = 0;
                 // Use local iterator to avoid serialization issues
-                for (Row row : batchDf.toLocalIterator()) {
+                java.util.Iterator<Row> rowIterator = batchDf.toLocalIterator();
+                while (rowIterator.hasNext()) {
+                    Row row = rowIterator.next();
                     try {
                         // Convert Spark Row to BSON Document
                         Document doc = rowToDocument(row);
@@ -87,7 +89,7 @@ public class MongoForeachBatchWriter implements Serializable {
                 logger.info("Batch {} written to {} in {}ms ({} rows, {} rows/sec)",
                         batchId, collectionName, duration, rowCount,
                         rowCount * 1000 / Math.max(duration, 1));
-            
+            }
         } catch (Exception e) {
             logger.error("Failed to write batch {} to collection {}", 
                     batchId, collectionName, e);

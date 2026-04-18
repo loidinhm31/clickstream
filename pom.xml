@@ -31,9 +31,8 @@
         <module>shared-models</module>
         <module>ingestion-api</module>
         <module>spark-etl</module>
-        <!-- Future modules -->
-        <!-- <module>realtime-analytics</module> -->
-        <!-- <module>raw-archiver</module> -->
+        <module>realtime-analytics</module>
+        <module>raw-archiver</module>
     </modules>
 
     <repositories>
