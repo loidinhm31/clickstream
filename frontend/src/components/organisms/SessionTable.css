@@ -1,0 +1,55 @@
+.session-table {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.session-table-header {
+  display: grid;
+  grid-template-columns: 2fr 2fr 3fr 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.header-col {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #6b7280;
+  letter-spacing: 0.05em;
+}
+
+.session-table-body {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.session-table-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.page-indicator {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.session-table-loading,
+.session-table-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+}
+
+.session-table-error {
+  color: #ef4444;
+}

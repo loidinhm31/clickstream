@@ -1,0 +1,32 @@
+.page-view-row {
+  display: grid;
+  grid-template-columns: 4fr 1fr 1fr 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.page-col {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.page-url {
+  font-weight: 500;
+  color: #3b82f6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-views,
+.page-users {
+  color: #111827;
+  font-weight: 600;
+}
+
+.page-time,
+.page-bounce {
+  color: #6b7280;
+}

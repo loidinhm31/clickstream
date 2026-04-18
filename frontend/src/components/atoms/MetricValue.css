@@ -1,0 +1,24 @@
+.metric-value {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.metric-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+}
+
+.metric-unit {
+  font-size: 1rem;
+  color: #9ca3af;
+  margin-left: 0.25rem;
+}

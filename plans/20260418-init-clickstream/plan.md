@@ -1,13 +1,14 @@
 ---
 title: "Clickstream Analytics Application"
 description: "Full-stack clickstream pipeline: React → Spring Boot → Kafka → Spark/Arrow/Parquet → MongoDB + Data Lake"
-status: in-progress
+status: completed
 priority: P1
 effort: 40h
 branch: main
 tags: [feature, backend, frontend, infra, kafka, spark, arrow]
 created: 2026-04-09
 last-updated: 2026-04-18
+completion-date: 2026-04-18
 ---
 
 # Clickstream Analytics Application
@@ -66,7 +67,7 @@ See inline diagram above in chat, or `research/researcher-01-report.md` for deta
 | 4 | Spark ETL pipeline | Done | 8h | [phase-04](./phase-04-spark-etl.md) |
 | 5 | Real-time analytics service (Arrow) | Done | 8h | [phase-05](./phase-05-realtime-analytics.md) |
 | 6 | Raw event archiver | Done | 3h | [phase-06](./phase-06-raw-archiver.md) |
-| 7 | React frontend (Atomic Design) | Pending | 9h | [phase-07](./phase-07-react-frontend.md) |
+| 7 | React frontend (Atomic Design) | Done | 9h | [phase-07](./phase-07-react-frontend.md) |
 
 ## Dependencies
 

@@ -23,8 +23,32 @@ Apache Kafka (clickstream-events topic, 6 partitions, sessionId key)
 
 - Docker & Docker Compose (in WSL for Windows users)
 - Java 17+ (for Spring Boot)
-- Node.js 18+ (for React frontend)
+- Node.js 18+ & npm (for React frontend)
 - Maven or Gradle
+
+### Frontend Setup (Phase 07)
+
+**Note:** Requires backend services to be running (Kafka, MongoDB, Ingestion API, Real-time Analytics)
+
+```bash
+# Install frontend dependencies
+cd frontend
+npm install
+
+# Start dev server (runs on http://localhost:3000)
+npm run dev
+
+# In another terminal, run tests (requires running backend)
+npm test
+
+# Build for production
+npm run build
+```
+
+**Frontend Services Expected:**
+- **Ingestion API** (http://localhost:8081) — Event submission endpoint
+- **Real-time Analytics** (ws://localhost:8082) — WebSocket metrics stream
+- **Backend requirement:** All infrastructure services must be running with `docker compose up -d`
 
 ### Quick Start
 
@@ -48,10 +72,12 @@ bash scripts/verify-setup.sh
 
 | Service | Port | Description |
 |---------|------|-------------|
+| React Frontend | 3000 | React 19 analytics dashboard (http://localhost:3000) |
 | Apache Kafka | 9092 | Message broker (KRaft mode), topic: `clickstream-events` (6 partitions) |
 | Kafbat UI | 8080 | Web UI for Kafka inspection and topic monitoring |
 | MongoDB | 27017 | Document database for aggregated session/page data |
 | Ingestion API | 8081 | Spring Boot REST API for event ingestion (`/api/events`) |
+| Real-time Analytics | 8082 | WebSocket server for live metrics (Arrow IPC protocol) |
 | Raw Archiver | — | Kafka consumer writing raw events to Parquet data lake |
 
 ### Kafka Topics

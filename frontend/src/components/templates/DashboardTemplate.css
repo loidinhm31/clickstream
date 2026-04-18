@@ -1,0 +1,11 @@
+.dashboard-template {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+}
+
+.dashboard-content {
+  flex: 1;
+  overflow-y: auto;
+}
