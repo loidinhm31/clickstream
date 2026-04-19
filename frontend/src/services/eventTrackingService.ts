@@ -1,6 +1,6 @@
 import { ClickEvent } from '../types/events';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 const BATCH_ENDPOINT = '/api/events/batch';
 
 // Validate configuration
@@ -65,9 +65,11 @@ class EventTrackingService {
     }
 
     // Send batch using sendBeacon for reliability
+    // Use Blob to set Content-Type: application/json (plain string defaults to text/plain)
+    const payload = new Blob([JSON.stringify(batch)], { type: 'application/json' });
     const success = navigator.sendBeacon(
       `${API_BASE}${BATCH_ENDPOINT}`,
-      JSON.stringify(batch)
+      payload
     );
 
     // Fallback to fetch if sendBeacon fails

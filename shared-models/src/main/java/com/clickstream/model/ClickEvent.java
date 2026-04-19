@@ -1,5 +1,6 @@
 package com.clickstream.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -116,12 +117,21 @@ public final class ClickEvent {
     }
 
     /**
-     * All-args constructor for immutable instance creation.
-     * Use Builder for easier construction.
+     * All-args constructor for immutable instance creation and Jackson deserialization.
+     * Use Builder for programmatic construction.
      */
-    private ClickEvent(String eventId, String userId, String sessionId, EventType eventType,
-                      String targetElement, String pageUrl, String referrerUrl,
-                      Long timestamp, String userAgent, EventMetadata metadata) {
+    @JsonCreator
+    public ClickEvent(
+            @JsonProperty("eventId") String eventId,
+            @JsonProperty("userId") String userId,
+            @JsonProperty("sessionId") String sessionId,
+            @JsonProperty("eventType") EventType eventType,
+            @JsonProperty("targetElement") String targetElement,
+            @JsonProperty("pageUrl") String pageUrl,
+            @JsonProperty("referrerUrl") String referrerUrl,
+            @JsonProperty("timestamp") Long timestamp,
+            @JsonProperty("userAgent") String userAgent,
+            @JsonProperty("metadata") EventMetadata metadata) {
         this.eventId = eventId;
         this.userId = userId;
         this.sessionId = sessionId;

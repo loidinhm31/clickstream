@@ -1,8 +1,10 @@
 package com.clickstream.archiver.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -33,5 +35,10 @@ public class ArchiverConfig {
         private String compression = "SNAPPY";
         private int pageSize = 1048576;  // 1MB
         private int rowGroupSize = 134217728;  // 128MB
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }

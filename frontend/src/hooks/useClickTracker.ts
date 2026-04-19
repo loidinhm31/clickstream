@@ -1,17 +1,18 @@
 import { useCallback, useContext } from 'react';
 import { TrackingContext } from '../contexts/TrackingContext';
 import { eventTrackingService } from '../services/eventTrackingService';
-import { EventType, ClickEvent } from '../types/events';
+import { EventMetadata, EventType, ClickEvent } from '../types/events';
 
 export function useClickTracker(componentName: string) {
   const { sessionId, userId } = useContext(TrackingContext);
 
   const trackEvent = useCallback(
-    (
-      eventType: EventType,
-      targetElement: string,
-      metadata?: Record<string, unknown>
-    ) => {
+    (eventType: EventType, targetElement: string, metadata?: EventMetadata) => {
+      const referrer = document.referrer;
+      const validReferrer =
+        referrer && (referrer.startsWith('http://') || referrer.startsWith('https://'))
+          ? referrer
+          : undefined;
       const event: ClickEvent = {
         eventId: crypto.randomUUID(),
         userId,
@@ -19,12 +20,12 @@ export function useClickTracker(componentName: string) {
         eventType,
         targetElement: `${componentName}:${targetElement}`,
         pageUrl: window.location.href,
-        referrerUrl: document.referrer || '',
+        referrerUrl: validReferrer,
         timestamp: Date.now(),
+        userAgent: navigator.userAgent,
         metadata: {
-          userAgent: navigator.userAgent,
-          screenResolution: `${window.screen.width}x${window.screen.height}`,
-          viewport: `${window.innerWidth}x${window.innerHeight}`,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
           ...metadata,
         },
       };
@@ -35,29 +36,37 @@ export function useClickTracker(componentName: string) {
   );
 
   const trackClick = useCallback(
-    (targetElement: string, metadata?: Record<string, unknown>) => {
-      trackEvent('CLICK', targetElement, metadata);
+    (targetElement: string, metadata?: EventMetadata, mouseEvent?: MouseEvent) => {
+      trackEvent('CLICK', targetElement, {
+        x: mouseEvent?.clientX ?? 0,
+        y: mouseEvent?.clientY ?? 0,
+        ...metadata,
+      });
     },
     [trackEvent]
   );
 
   const trackPageView = useCallback(
-    (metadata?: Record<string, unknown>) => {
+    (metadata?: EventMetadata) => {
       trackEvent('PAGE_VIEW', window.location.pathname, metadata);
     },
     [trackEvent]
   );
 
+  // scrollDepth must be in range 0.0-1.0
   const trackScroll = useCallback(
-    (targetElement: string, metadata?: Record<string, unknown>) => {
-      trackEvent('SCROLL', targetElement, metadata);
+    (targetElement: string, scrollDepth: number, metadata?: EventMetadata) => {
+      trackEvent('SCROLL', targetElement, {
+        scrollDepth: Math.min(1, Math.max(0, scrollDepth)),
+        ...metadata,
+      });
     },
     [trackEvent]
   );
 
   const trackHover = useCallback(
-    (targetElement: string, metadata?: Record<string, unknown>) => {
-      trackEvent('HOVER', targetElement, metadata);
+    (targetElement: string, durationMs: number, metadata?: EventMetadata) => {
+      trackEvent('HOVER', targetElement, { durationMs, ...metadata });
     },
     [trackEvent]
   );

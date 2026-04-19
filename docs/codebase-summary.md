@@ -231,10 +231,10 @@ Metrics Output (Arrow IPC):
 **Configuration (application.yml):**
 
 ```yaml
-server.port: 8082
+server.port: 9052
 
 spring.kafka:
-  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9056}
   consumer:
     group-id: realtime-analytics-group
     auto-offset-reset: latest
@@ -257,7 +257,7 @@ metrics:
     push-interval-ms: 1500                 # Every 1.5s
     allowed-origins:
       - http://localhost:3000
-      - http://localhost:5173
+      - http://localhost:9054
 ```
 
 **Dependencies (pom.xml):**
@@ -532,7 +532,7 @@ archiver:
     stuck-threshold-seconds: 120  # Health DOWN if no flush > 2min
 
 spring.kafka:
-  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9056}
   consumer:
     group-id: raw-archiver-group
     auto-offset-reset: earliest
@@ -631,15 +631,15 @@ mvn test
 **Development:**
 ```bash
 mvn spring-boot:run
-# Runs on http://localhost:8081
+# Runs on http://localhost:9051
 ```
 
 **Containerized:**
 ```bash
 docker build -t clickstream/ingestion-api:1.0.0 .
-docker run -p 8081:8081 \
-  -e SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092 \
-  -e SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/clickstream_db \
+docker run -p 9051:9051 \
+  -e SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9056 \
+  -e SPRING_DATA_MONGODB_URI=mongodb://mongo:9055/clickstream_db \
   clickstream/ingestion-api:1.0.0
 ```
 

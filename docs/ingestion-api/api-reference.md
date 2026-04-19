@@ -11,7 +11,7 @@ Ingest a single click event. Event is validated and published asynchronously to 
 **Request:**
 ```http
 POST /api/events HTTP/1.1
-Host: localhost:8081
+Host: localhost:9051
 Content-Type: application/json
 
 {
@@ -75,7 +75,7 @@ Ingest multiple events in a single request (up to 100 events).
 **Request:**
 ```http
 POST /api/events/batch HTTP/1.1
-Host: localhost:8081
+Host: localhost:9051
 Content-Type: application/json
 
 [
@@ -137,7 +137,7 @@ Query session aggregates with optional filters and pagination.
 **Request:**
 ```http
 GET /api/analytics/sessions?page=0&size=20&userId=user1&startTime=2026-04-18T00:00:00Z&endTime=2026-04-19T00:00:00Z
-Host: localhost:8081
+Host: localhost:9051
 ```
 
 **Query Parameters:**
@@ -196,7 +196,7 @@ Query page metrics and performance data.
 **Request:**
 ```http
 GET /api/analytics/pages?page=0&size=20&pageUrl=https://app.example.com/checkout
-Host: localhost:8081
+Host: localhost:9051
 ```
 
 **Query Parameters:**
@@ -252,7 +252,7 @@ Query the user journey map - sequence of pages visited in a session.
 **Request:**
 ```http
 GET /api/analytics/journeys/user-abc-123?sessionId=sess-xyz-789
-Host: localhost:8081
+Host: localhost:9051
 ```
 
 **Path Parameters:**

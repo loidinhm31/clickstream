@@ -47,7 +47,7 @@ export function SessionTable() {
             key={session.sessionId}
             session={session}
             onClick={() =>
-              trackClick('session_row', { sessionId: session.sessionId })
+              trackClick('session_row')
             }
           />
         ))}

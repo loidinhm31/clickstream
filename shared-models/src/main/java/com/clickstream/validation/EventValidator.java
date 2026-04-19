@@ -24,8 +24,9 @@ public class EventValidator {
     // Pre-compiled regex patterns for performance
     private static final Pattern PII_PATTERN = Pattern.compile(
             "(?i)\\b(password|passwd|pwd|ssn|social.?security|credit.?card|cvv|pin)\\b");
+    // Negative lookbehind for '/' to avoid matching browser version strings like Chrome/120.0.0.0
     private static final Pattern IP_ADDRESS_PATTERN = Pattern.compile(
-            "\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b");
+            "(?<!/)\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b");
     private static final Pattern XSS_PATTERN = Pattern.compile(
             "(?i)<script|javascript:|onerror=|onclick=|<iframe");
 
@@ -89,7 +90,7 @@ public class EventValidator {
         if (event.getPageUrl() != null) {
             validateURL(event.getPageUrl(), "pageUrl", errors);
         }
-        if (event.getReferrerUrl() != null) {
+        if (event.getReferrerUrl() != null && !event.getReferrerUrl().isBlank()) {
             validateURL(event.getReferrerUrl(), "referrerUrl", errors);
         }
 

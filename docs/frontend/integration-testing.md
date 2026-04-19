@@ -13,8 +13,8 @@ docker compose up -d
 
 # Terminal 2: Verify services
 docker compose ps
-# kafka RUNNING :9092
-# mongodb RUNNING :27017
+# kafka RUNNING :9056
+# mongodb RUNNING :9055
 # redis RUNNING :6379
 ```
 
@@ -22,10 +22,10 @@ docker compose ps
 
 | Service | Port | Purpose | Health Check |
 |---------|------|---------|--------------|
-| Kafka | 9092 | Event message broker | `/opt/kafka/bin/kafka-topics.sh --list` |
-| MongoDB | 27017 | Session/page aggregates | `mongo --eval "db.adminCommand('ping')"` |
-| Ingestion API | 8081 | Event ingestion REST API | `curl http://localhost:8081/health` |
-| Real-time Analytics | 8082 | WebSocket metrics stream | `curl -i -N -H "Connection: Upgrade" ws://localhost:8082` |
+| Kafka | 9056 | Event message broker | `/opt/kafka/bin/kafka-topics.sh --list` |
+| MongoDB | 9055 | Session/page aggregates | `mongo --eval "db.adminCommand('ping')"` |
+| Ingestion API | 9051 | Event ingestion REST API | `curl http://localhost:9051/health` |
+| Real-time Analytics | 9052 | WebSocket metrics stream | `curl -i -N -H "Connection: Upgrade" ws://localhost:9052` |
 
 ---
 
@@ -92,7 +92,7 @@ describe('Event Submission - Integration', () => {
 ```bash
 # Check if events reached Kafka
 docker exec kafka kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events \
   --from-beginning \
   --max-messages 10
@@ -199,7 +199,7 @@ python -m realtime_analytics.server
 # Monitor WebSocket traffic with browser DevTools:
 # 1. Open http://localhost:3000 in browser
 # 2. DevTools → Network → Filter for "WebSocket"
-# 3. Click "ws://localhost:8082"
+# 3. Click "ws://localhost:9052"
 # 4. Messages tab shows Arrow binary data
 ```
 
@@ -474,16 +474,16 @@ db.pages.insertMany([
 
 ```bash
 # 1. Verify Kafka is running
-docker exec kafka kafka-broker-api-versions.sh --bootstrap-server localhost:9092
+docker exec kafka kafka-broker-api-versions.sh --bootstrap-server localhost:9056
 
 # 2. Verify MongoDB is running
 docker exec mongodb mongosh --eval "db.adminCommand('ping')"
 
 # 3. Verify Ingestion API is running
-curl http://localhost:8081/health
+curl http://localhost:9051/health
 
 # 4. Verify Real-time Analytics is running
-curl -v http://localhost:8082/health 2>&1 | grep -i "101\|upgrade"
+curl -v http://localhost:9052/health 2>&1 | grep -i "101\|upgrade"
 ```
 
 ### Run Tests
@@ -531,12 +531,12 @@ jobs:
       kafka:
         image: confluentinc/cp-kafka:7.5.0
         options: >-
-          --health-cmd "kafka-broker-api-versions --bootstrap-server localhost:9092"
+          --health-cmd "kafka-broker-api-versions --bootstrap-server localhost:9056"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 9092:9092
+          - 9056:9056
       
       mongodb:
         image: mongo:7.0
@@ -546,7 +546,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 27017:27017
+          - 9055:9055
     
     steps:
       - uses: actions/checkout@v3
@@ -587,7 +587,7 @@ jobs:
 
 | Issue | Solution |
 |-------|----------|
-| WebSocket connection fails | Verify realtime-analytics running on port 8082 |
+| WebSocket connection fails | Verify realtime-analytics running on port 9052 |
 | Events not batching | Check event queue logic, verify network isn't blocking requests |
 | Session not extending | Verify sessionStorage accessible, check timestamp calculation |
 | API returns 503 (Service Unavailable) | Verify Ingestion API running, check Kafka connection |

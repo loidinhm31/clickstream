@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 1. Ingestion: Receive click events via REST → publish to Kafka
  * 2. Analytics: Serve historical session data from MongoDB
  * 
- * Port: 8081 (8080 reserved for Kafka UI)
+ * Port: 9051 (9050 reserved for Kafka UI)
  */
 @SpringBootApplication
 public class ClickstreamApplication {

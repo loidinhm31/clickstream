@@ -41,9 +41,7 @@ export function JourneysPage() {
                 key={journey.sessionId}
                 className="journey-card"
                 onClick={() =>
-                  trackClick('journey_expand', {
-                    sessionId: journey.sessionId,
-                  })
+                  trackClick('journey_expand')
                 }
               >
                 <div className="journey-header">

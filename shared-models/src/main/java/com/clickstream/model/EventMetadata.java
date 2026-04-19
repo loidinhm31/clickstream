@@ -1,5 +1,6 @@
 package com.clickstream.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -65,8 +66,15 @@ public final class EventMetadata {
         this(null, null, null, null, null, null, null);
     }
 
-    private EventMetadata(Integer x, Integer y, Double scrollDepth, Integer viewportWidth,
-                         Integer viewportHeight, String elementText, Long durationMs) {
+    @JsonCreator
+    public EventMetadata(
+            @JsonProperty("x") Integer x,
+            @JsonProperty("y") Integer y,
+            @JsonProperty("scrollDepth") Double scrollDepth,
+            @JsonProperty("viewportWidth") Integer viewportWidth,
+            @JsonProperty("viewportHeight") Integer viewportHeight,
+            @JsonProperty("elementText") String elementText,
+            @JsonProperty("durationMs") Long durationMs) {
         this.x = x;
         this.y = y;
         this.scrollDepth = scrollDepth;

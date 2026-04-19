@@ -1179,13 +1179,13 @@ public class MongoIndexService {
 
 ```yaml
 kafka:
-  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9056}
   topic: clickstream-events
   properties:
     security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
 
 mongodb:
-  uri: ${MONGODB_URI:mongodb://localhost:27017}
+  uri: ${MONGODB_URI:mongodb://localhost:9055}
   database: clickstream_db
 
 spark:
@@ -1205,8 +1205,8 @@ streaming:
 
 ```bash
 # Set environment before running
-export KAFKA_BOOTSTRAP_SERVERS="kafka1:9092,kafka2:9092,kafka3:9092"
-export MONGODB_URI="mongodb://replica-set-0:27017,replica-set-1:27017/?replicaSet=rs0"
+export KAFKA_BOOTSTRAP_SERVERS="kafka1:9056,kafka2:9056,kafka3:9056"
+export MONGODB_URI="mongodb://replica-set-0:9055,replica-set-1:9055/?replicaSet=rs0"
 export SPARK_EXECUTOR_MEMORY="4g"
 export SPARK_DRIVER_MEMORY="2g"
 

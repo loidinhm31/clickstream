@@ -398,7 +398,7 @@ function validateEvent(event: ClickEvent): string[] {
 
 ```http
 POST /api/events/batch HTTP/1.1
-Host: localhost:8081
+Host: localhost:9051
 Content-Type: application/json
 
 {
@@ -570,7 +570,7 @@ console.log('Pending events:', JSON.parse(localStorage.getItem('pending_events')
 
 ```bash
 # Terminal: Watch API requests in real-time
-curl -i -X POST http://localhost:8081/api/events/batch \
+curl -i -X POST http://localhost:9051/api/events/batch \
   -H "Content-Type: application/json" \
   -d '{"events": [...]}'
 
