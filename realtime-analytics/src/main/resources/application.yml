@@ -1,11 +1,11 @@
 server:
-  port: 8082
+  port: 9052
 
 spring:
   application:
     name: realtime-analytics
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9056}
     consumer:
       group-id: realtime-analytics-group
       auto-offset-reset: latest
@@ -34,9 +34,7 @@ metrics:
     event-rate-seconds: 60         # 1 minute
   websocket:
     push-interval-ms: 1500  # Push every 1.5 seconds
-    allowed-origins:
-      - http://localhost:3000
-      - http://localhost:5173
+    allowed-origins: "http://localhost:9054"
 
 # Logging
 logging:

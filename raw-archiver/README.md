@@ -46,7 +46,7 @@ data-lake/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| KAFKA_BOOTSTRAP_SERVERS | localhost:9092 | Kafka broker addresses |
+| KAFKA_BOOTSTRAP_SERVERS | localhost:9056 | Kafka broker addresses |
 | DATA_LAKE_PATH | ./data-lake | Base path for data lake |
 | FLUSH_EVENT_THRESHOLD | 10000 | Flush after N events |
 | FLUSH_INTERVAL_SECONDS | 60 | Flush after N seconds |
@@ -105,7 +105,7 @@ The archiver implements manual offset management to prevent data loss:
 ### Health Check
 
 ```bash
-curl http://localhost:8083/actuator/health
+curl http://localhost:9053/actuator/health
 ```
 
 Returns:

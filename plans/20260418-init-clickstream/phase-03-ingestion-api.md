@@ -109,7 +109,7 @@ public class EventPublisher {
 ```yaml
 spring:
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: localhost:9056
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -119,10 +119,10 @@ spring:
       linger-ms: 5           # small batch window for low latency
   data:
     mongodb:
-      uri: mongodb://localhost:27017/clickstream_db
+      uri: mongodb://localhost:9055/clickstream_db
 
 server:
-  port: 8081  # 8080 taken by Kafka UI
+  port: 9051  # 9050 taken by Kafka UI
 ```
 
 ### Maven Dependencies (pom.xml key entries)

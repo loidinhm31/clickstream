@@ -39,7 +39,7 @@ Comprehensive technical architecture of the Clickstream Analytics platform.
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│ Spring Boot Application (port 8081)                    │
+│ Spring Boot Application (port 9051)                    │
 ├────────────────────────────────────────────────────────┤
 │ Web Layer                                              │
 │ ├── EventController                                    │
@@ -351,7 +351,7 @@ Metrics Output:
 **Configuration (src/main/resources/application.yml):**
 ```yaml
 server:
-  port: 8082
+  port: 9052
 
 metrics:
   ring-buffer:
@@ -365,7 +365,7 @@ metrics:
     push-interval-ms: 1500           # Push every 1.5 seconds
     allowed-origins:
       - http://localhost:3000
-      - http://localhost:5173
+      - http://localhost:9054
 
 arrow:
   allocator:
@@ -376,13 +376,13 @@ arrow:
 
 *HTTP Pull (Fallback):*
 ```bash
-curl http://localhost:8082/api/realtime/metrics --output metrics.bin
+curl http://localhost:9052/api/realtime/metrics --output metrics.bin
 ```
 
 *WebSocket Push (Real-time):*
 ```javascript
 const arrow = require('apache-arrow');
-const ws = new WebSocket('ws://localhost:8082/ws/realtime/metrics');
+const ws = new WebSocket('ws://localhost:9052/ws/realtime/metrics');
 ws.binaryType = 'arraybuffer';
 ws.onmessage = (event) => {
   const reader = arrow.RecordBatchReader.from(new Uint8Array(event.data));
@@ -393,7 +393,7 @@ ws.onmessage = (event) => {
 
 *Health Check:*
 ```bash
-curl http://localhost:8082/api/realtime/health
+curl http://localhost:9052/api/realtime/health
 ```
 
 **See Also:** [realtime-analytics/README.md](../realtime-analytics/README.md) for setup, configuration, testing, and troubleshooting.
@@ -533,7 +533,7 @@ data-lake/
 
 ```yaml
 server:
-  port: 8083
+  port: 9053
   shutdown: graceful
   servlet:
     shutdown-wait-time: 30s
@@ -543,7 +543,7 @@ spring:
     name: raw-archiver
 
 kafka:
-  bootstrap-servers: localhost:9092
+  bootstrap-servers: localhost:9056
   consumer:
     group-id: raw-archiver-group
     auto-offset-reset: earliest
@@ -578,7 +578,7 @@ management:
 
 ```bash
 # Override defaults
-export KAFKA_BOOTSTRAP_SERVERS="kafka-prod:9092"
+export KAFKA_BOOTSTRAP_SERVERS="kafka-prod:9056"
 export DATA_LAKE_PATH="/mnt/data-lake"
 export FLUSH_EVENT_THRESHOLD="50000"    # Higher for production
 export FLUSH_INTERVAL_SECONDS="120"     # Longer for efficiency
@@ -588,7 +588,7 @@ export FLUSH_INTERVAL_SECONDS="120"     # Longer for efficiency
 
 ```bash
 # Check service status
-curl http://localhost:8083/actuator/health
+curl http://localhost:9053/actuator/health
 
 # Response (UP)
 {
@@ -732,7 +732,7 @@ curl http://localhost:8083/actuator/health
 Single Instance (Development)
 ┌─────────────┐
 │ API Pod 1   │
-│ Port 8081   │
+│ Port 9051   │
 └─────┬───────┘
       │ Round-robin
     Kafka
@@ -740,7 +740,7 @@ Single Instance (Development)
 Multiple Instances (Production)
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │ API Pod 1   │     │ API Pod 2   │     │ API Pod 3   │
-│ Port 8081   │     │ Port 8081   │     │ Port 8081   │
+│ Port 9051   │     │ Port 9051   │     │ Port 9051   │
 └─────┬───────┘     └─────┬───────┘     └─────┬───────┘
       └─────────────┬─────────────────────────┘
                     │
@@ -897,8 +897,8 @@ Public Internet
     ↓
 [Internal Network]
     ├─ API Pods
-    ├─ Kafka (internal port 9092)
-    └─ MongoDB (internal port 27017)
+    ├─ Kafka (internal port 9056)
+    └─ MongoDB (internal port 9055)
 
 Access Rules:
 • Kafka: Only API + Spark + Analytics services

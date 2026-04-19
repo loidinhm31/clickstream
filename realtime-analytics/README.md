@@ -2,7 +2,7 @@
 
 Real-time metrics engine for the Clickstream Analytics platform. Consumes events from Kafka, maintains a 15-minute sliding window of Apache Arrow columnar data, and serves metrics via REST API (HTTP) and WebSocket (push).
 
-**Port:** `8082` | **Health:** `GET /api/realtime/health`
+**Port:** `9052` | **Health:** `GET /api/realtime/health`
 
 ---
 
@@ -11,7 +11,7 @@ Real-time metrics engine for the Clickstream Analytics platform. Consumes events
 ### Prerequisites
 - Java 11+
 - Maven 3.8+
-- Kafka running on `localhost:9092` (or set `KAFKA_BOOTSTRAP_SERVERS` env var)
+- Kafka running on `localhost:9056` (or set `KAFKA_BOOTSTRAP_SERVERS` env var)
 - Parent project built (`mvn install -DskipTests` from root)
 
 ### Build & Run
@@ -24,7 +24,7 @@ java -jar target/realtime-analytics-*.jar
 
 Or with custom Kafka:
 ```bash
-KAFKA_BOOTSTRAP_SERVERS=kafka-host:9092 java -jar target/realtime-analytics-*.jar
+KAFKA_BOOTSTRAP_SERVERS=kafka-host:9056 java -jar target/realtime-analytics-*.jar
 ```
 
 ---
@@ -98,11 +98,11 @@ Edit `src/main/resources/application.yml`:
 
 ```yaml
 server:
-  port: 8082
+  port: 9052
 
 spring:
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9056}
     consumer:
       group-id: realtime-analytics-group
       auto-offset-reset: latest
@@ -127,7 +127,7 @@ metrics:
     push-interval-ms: 1500  # Push every 1.5s
     allowed-origins:
       - http://localhost:3000
-      - http://localhost:5173
+      - http://localhost:9054
 ```
 
 **Environment Variables:**
@@ -150,7 +150,7 @@ Body: Apache Arrow IPC Stream (binary)
 
 **JavaScript Example:**
 ```javascript
-fetch('http://localhost:8082/api/realtime/metrics')
+fetch('http://localhost:9052/api/realtime/metrics')
   .then(r => r.arrayBuffer())
   .then(buf => {
     const reader = arrow.RecordBatchReader.from(new Uint8Array(buf));
@@ -164,7 +164,7 @@ fetch('http://localhost:8082/api/realtime/metrics')
 import requests
 import pyarrow as pa
 
-response = requests.get('http://localhost:8082/api/realtime/metrics')
+response = requests.get('http://localhost:9052/api/realtime/metrics')
 reader = pa.ipc.open_stream(response.content)
 table = reader.read_all()
 print(table)
@@ -209,7 +209,7 @@ Engine monitoring statistics.
 
 ### WebSocket Endpoint
 
-#### `ws://localhost:8082/ws/realtime/metrics`
+#### `ws://localhost:9052/ws/realtime/metrics`
 
 Binary WebSocket connection for push-based real-time metrics.
 
@@ -217,7 +217,7 @@ Binary WebSocket connection for push-based real-time metrics.
 
 1. **Client Connects:** Browser opens WebSocket to `/ws/realtime/metrics`
    ```javascript
-   const ws = new WebSocket('ws://localhost:8082/ws/realtime/metrics');
+   const ws = new WebSocket('ws://localhost:9052/ws/realtime/metrics');
    ws.binaryType = 'arraybuffer';
    ```
 
@@ -355,20 +355,20 @@ Spins up an embedded Kafka container, publishes test events, verifies metrics co
 
 3. **Publish test events (from ingestion-api):**
    ```bash
-   curl -X POST http://localhost:8081/api/events/batch \
+   curl -X POST http://localhost:9051/api/events/batch \
      -H "Content-Type: application/json" \
      -d @../test-event.json
    ```
 
 4. **Pull metrics via HTTP:**
    ```bash
-   curl http://localhost:8082/api/realtime/metrics --output metrics.bin
+   curl http://localhost:9052/api/realtime/metrics --output metrics.bin
    ```
 
 5. **Connect WebSocket (JavaScript):**
    ```javascript
    const arrow = require('apache-arrow');
-   const ws = new WebSocket('ws://localhost:8082/ws/realtime/metrics');
+   const ws = new WebSocket('ws://localhost:9052/ws/realtime/metrics');
    ws.binaryType = 'arraybuffer';
    ws.onmessage = (e) => {
      const reader = arrow.RecordBatchReader.from(new Uint8Array(e.data));

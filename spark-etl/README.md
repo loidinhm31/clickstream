@@ -114,7 +114,7 @@ All configuration via [application.yml](./src/main/resources/application.yml). O
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Broker endpoints |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9056` | Broker endpoints |
 | `KAFKA_SECURITY_PROTOCOL` | `PLAINTEXT` | Security mode (`PLAINTEXT` or `SASL_SSL`) |
 | `KAFKA_SASL_MECHANISM` | (empty) | SASL mechanism if using SASL_SSL |
 | `KAFKA_SASL_JAAS_CONFIG` | (empty) | JAAS config string (required for SASL) |
@@ -123,7 +123,7 @@ All configuration via [application.yml](./src/main/resources/application.yml). O
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MONGODB_URI` | `mongodb://localhost:27017` | Connection URI |
+| `MONGODB_URI` | `mongodb://localhost:9055` | Connection URI |
 | `MONGODB_DATABASE` | `clickstream_db` | Database name |
 
 ### Spark Configuration
@@ -182,8 +182,8 @@ mvn spring-boot:run -f spark-etl/pom.xml
 
 3. **Set environment variables:**
    ```bash
-   export KAFKA_BOOTSTRAP_SERVERS="kafka1:9092,kafka2:9092,kafka3:9092"
-   export MONGODB_URI="mongodb://replica-set-0:27017,replica-set-1:27017,replica-set-2:27017/?replicaSet=rs0"
+   export KAFKA_BOOTSTRAP_SERVERS="kafka1:9056,kafka2:9056,kafka3:9056"
+   export MONGODB_URI="mongodb://replica-set-0:9055,replica-set-1:9055,replica-set-2:9055/?replicaSet=rs0"
    export SPARK_EXECUTOR_MEMORY="4g"
    export SPARK_DRIVER_MEMORY="2g"
    ```
@@ -270,15 +270,15 @@ ds.writeStream()
 **Solution:**
 ```bash
 # Check current offsets
-kafka-consumer-groups --bootstrap-server localhost:9092 \
+kafka-consumer-groups --bootstrap-server localhost:9056 \
   --group spark-etl-consumer --describe
 
 # Reset to earliest (loss of messages!)
-kafka-consumer-groups --bootstrap-server localhost:9092 \
+kafka-consumer-groups --bootstrap-server localhost:9056 \
   --group spark-etl-consumer --reset-offsets --to-earliest --execute
 
 # Or reset to latest (skip backlog)
-kafka-consumer-groups --bootstrap-server localhost:9092 \
+kafka-consumer-groups --bootstrap-server localhost:9056 \
   --group spark-etl-consumer --reset-offsets --to-latest --execute
 ```
 

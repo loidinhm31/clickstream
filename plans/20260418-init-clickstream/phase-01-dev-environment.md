@@ -22,7 +22,7 @@
 ## Requirements
 - Single Kafka broker with `clickstream-events` topic auto-created (6 partitions)
 - MongoDB with persistent volume
-- Kafka UI accessible at localhost:8080
+- Kafka UI accessible at localhost:9050
 - All services on shared Docker network
 - Spring Boot, Spark, Real-time Service connect from host machine
 
@@ -35,13 +35,13 @@ services:
     image: apache/kafka:latest
     container_name: kafka
     ports:
-      - "9092:9092"    # Host access
+      - "9056:9056"    # Host access
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: CONTROLLER://kafka:9093,HOST://0.0.0.0:9092,DOCKER://0.0.0.0:9094
-      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://kafka:9094
+      KAFKA_LISTENERS: CONTROLLER://kafka:9093,HOST://0.0.0.0:9056,DOCKER://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9056,DOCKER://kafka:9094
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,HOST:PLAINTEXT,DOCKER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
@@ -74,7 +74,7 @@ services:
     image: kafbat/kafka-ui:main
     container_name: kafka-ui
     ports:
-      - "8080:8080"
+      - "9050:9050"
     environment:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: clickstream-local
@@ -88,7 +88,7 @@ services:
     image: mongo:7
     container_name: mongodb
     ports:
-      - "27017:27017"
+      - "9055:9055"
     environment:
       MONGO_INITDB_DATABASE: clickstream_db
     volumes:
@@ -120,16 +120,16 @@ networks:
    echo "=== Waiting 15s for Kafka init ==="
    sleep 15
    echo "=== Listing topics ==="
-   docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+   docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9056 --list
    echo "=== Producing test message ==="
    echo '{"eventId":"test-1","eventType":"CLICK","timestamp":1234567890}' | \
-     docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic clickstream-events
+     docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9056 --topic clickstream-events
    echo "=== Consuming test message ==="
-   docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic clickstream-events --from-beginning --timeout-ms 5000
-   echo "=== Open Kafka UI at http://localhost:8080 ==="
-   echo "=== MongoDB at mongodb://localhost:27017/clickstream_db ==="
+   docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9056 --topic clickstream-events --from-beginning --timeout-ms 5000
+   echo "=== Open Kafka UI at http://localhost:9050 ==="
+   echo "=== MongoDB at mongodb://localhost:9055/clickstream_db ==="
    ```
-3. Run verification script, confirm topic visible in Kafka UI at localhost:8080
+3. Run verification script, confirm topic visible in Kafka UI at localhost:9050
 
 ## Todo
 - [x] Create docker-compose.yml
@@ -141,11 +141,11 @@ networks:
 - ✓ `docker compose up -d` starts all containers without errors
 - ✓ `clickstream-events` topic exists with 6 partitions
 - ✓ Test message round-trips (produce → consume)
-- ✓ Kafka UI shows topic, partitions, messages at localhost:8080
-- ✓ MongoDB accepts connections at localhost:27017
+- ✓ Kafka UI shows topic, partitions, messages at localhost:9050
+- ✓ MongoDB accepts connections at localhost:9055
 
 ## Risk Assessment
-- **Port conflicts:** 9092, 8080, 27017 commonly used. Document alternative port mapping.
+- **Port conflicts:** 9056, 9050, 9055 commonly used. Document alternative port mapping.
 - **Kafka startup race:** init container may run before Kafka is ready. Sleep 10s mitigates; health check better for prod.
 
 ## Security Considerations
@@ -153,4 +153,4 @@ networks:
 
 ## Next Steps
 - Phase 2: Define event schema and Kafka configuration details
-- All service phases use connection string `localhost:9092` (Kafka) and `localhost:27017` (MongoDB)
+- All service phases use connection string `localhost:9056` (Kafka) and `localhost:9055` (MongoDB)

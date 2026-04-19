@@ -16,7 +16,7 @@ Spring Boot REST API for real-time clickstream event ingestion and historical an
 1. **Start infrastructure:**
 ```bash
 cd ../..  # Go to clickstream root
-docker compose up -d kafka mongo  # Starts Kafka (9092) and MongoDB (27017)
+docker compose up -d kafka mongo  # Starts Kafka (9056) and MongoDB (9055)
 ```
 
 2. **Build and run API:**
@@ -26,7 +26,7 @@ mvn clean install
 mvn spring-boot:run
 ```
 
-The API runs on `http://localhost:8081` with:
+The API runs on `http://localhost:9051` with:
 - Event ingestion: `POST /api/events`
 - Analytics queries: `GET /api/analytics/*`
 
@@ -34,7 +34,7 @@ The API runs on `http://localhost:8081` with:
 
 ```bash
 # Ingest a test event
-curl -X POST http://localhost:8081/api/events \
+curl -X POST http://localhost:9051/api/events \
   -H "Content-Type: application/json" \
   -d '{
     "eventId": "e1",
@@ -147,7 +147,7 @@ See [Phase 03 Plan](../../plans/20260418-init-clickstream/phase-03-ingestion-api
 ## Related Components
 
 - **[Shared Models](../shared-models/)** - ClickEvent, EventType schema
-- **[Kafka](../docker-compose.yml)** - Message broker (localhost:9092)
-- **[MongoDB](../docker-compose.yml)** - Document database (localhost:27017)
+- **[Kafka](../docker-compose.yml)** - Message broker (localhost:9056)
+- **[MongoDB](../docker-compose.yml)** - Document database (localhost:9055)
 - **[Spark ETL](../spark-etl/)** - Writes session aggregates to MongoDB
 - **[Real-time Analytics](../realtime-analytics/)** - WebSocket consumer for live data

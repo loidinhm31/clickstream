@@ -117,7 +117,7 @@ public class ClickstreamETLJob {
     public void start() {
         Dataset<Row> rawStream = spark.readStream()
             .format("kafka")
-            .option("kafka.bootstrap.servers", "localhost:9092")
+            .option("kafka.bootstrap.servers", "localhost:9056")
             .option("subscribe", "clickstream-events")
             .option("startingOffsets", "earliest")
             .option("failOnDataLoss", false)

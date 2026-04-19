@@ -213,7 +213,7 @@ End-to-end clickstream analytics system with 7 implementation phases. All phases
 - Status: ✅ Ready
 
 ### Frontend ↔ Realtime Analytics (Phase 5)
-- WebSocket endpoint: `ws://localhost:8081/metrics`
+- WebSocket endpoint: `ws://localhost:9051/metrics`
 - Arrow IPC binary format for metrics exchange
 - Automatic reconnection on disconnect
 - Rate limiting: 5 connections per IP enforced

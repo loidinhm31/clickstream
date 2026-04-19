@@ -60,10 +60,10 @@ services:
   ingestion-api:
     image: clickstream/ingestion-api:1.0.0
     ports:
-      - "8081:8081"
+      - "9051:9051"
     environment:
-      SPRING_SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/clickstream_db
+      SPRING_SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9056
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:9055/clickstream_db
       CLICKSTREAM_CORS_ALLOWED_ORIGINS: "http://localhost:3000"
     depends_on:
       - kafka
@@ -71,7 +71,7 @@ services:
     networks:
       - clickstream-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9051/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -81,7 +81,7 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9094,PLAINTEXT_HOST://localhost:9056
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -100,7 +100,7 @@ services:
   mongo:
     image: mongo:7.0
     ports:
-      - "27017:27017"
+      - "9055:9055"
     environment:
       MONGO_INITDB_DATABASE: clickstream_db
     volumes:
@@ -149,13 +149,13 @@ spec:
       - name: ingestion-api
         image: clickstream/ingestion-api:1.0.0
         ports:
-        - containerPort: 8081
+        - containerPort: 9051
           name: http
         env:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
         - name: SPRING_SPRING_KAFKA_BOOTSTRAP_SERVERS
-          value: "kafka-broker-0.kafka-broker-headless.kafka:9092,kafka-broker-1.kafka-broker-headless.kafka:9092,kafka-broker-2.kafka-broker-headless.kafka:9092"
+          value: "kafka-broker-0.kafka-broker-headless.kafka:9056,kafka-broker-1.kafka-broker-headless.kafka:9056,kafka-broker-2.kafka-broker-headless.kafka:9056"
         - name: SPRING_DATA_MONGODB_URI
           valueFrom:
             secretKeyRef:
@@ -173,7 +173,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /actuator/health
-            port: 8081
+            port: 9051
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
@@ -181,7 +181,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /actuator/health/readiness
-            port: 8081
+            port: 9051
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
@@ -197,7 +197,7 @@ spec:
   type: LoadBalancer
   ports:
   - port: 80
-    targetPort: 8081
+    targetPort: 9051
     protocol: TCP
     name: http
   selector:
@@ -252,7 +252,7 @@ spring:
     name: clickstream-ingestion-api
   
   kafka:
-    bootstrap-servers: kafka-prod-1:9092,kafka-prod-2:9092,kafka-prod-3:9092
+    bootstrap-servers: kafka-prod-1:9056,kafka-prod-2:9056,kafka-prod-3:9056
     producer:
       acks: all                     # Wait for all replicas (durability)
       compression-type: snappy      # Better compression ratio
@@ -274,7 +274,7 @@ spring.data.mongodb:
   max-connection-life-time: 1800000  # 30 minutes
   
 server:
-  port: 8081
+  port: 9051
   tomcat:
     threads:
       max: 200                       # HTTP thread pool
@@ -319,7 +319,7 @@ export DB_USER=prod_user
 export DB_PASSWORD=<secure-password>
 
 # Kafka broker addresses
-export KAFKA_BOOTSTRAP_SERVERS="kafka-1:9092,kafka-2:9092,kafka-3:9092"
+export KAFKA_BOOTSTRAP_SERVERS="kafka-1:9056,kafka-2:9056,kafka-3:9056"
 
 # Application configuration
 export SPRING_PROFILES_ACTIVE=prod
@@ -342,9 +342,9 @@ mongosh --eval "
   rs.initiate({
     _id: 'rs0',
     members: [
-      {_id: 0, host: 'mongo-1:27017'},
-      {_id: 1, host: 'mongo-2:27017'},
-      {_id: 2, host: 'mongo-3:27017'}
+      {_id: 0, host: 'mongo-1:9055'},
+      {_id: 1, host: 'mongo-2:9055'},
+      {_id: 2, host: 'mongo-3:9055'}
     ]
   })
 "
@@ -386,7 +386,7 @@ spring.data.mongodb:
 ```bash
 # Daily backup script
 #!/bin/bash
-mongodump --uri "mongodb://user:pass@mongo:27017/clickstream_db" \
+mongodump --uri "mongodb://user:pass@mongo:9055/clickstream_db" \
           --out /backups/mongodb-$(date +%Y%m%d)
           
 # Compress
@@ -407,7 +407,7 @@ aws s3 cp /backups/mongodb-$(date +%Y%m%d).tar.gz \
 ```bash
 # Create topic with replication factor 3
 kafka-topics.sh --create \
-  --bootstrap-server kafka-1:9092 \
+  --bootstrap-server kafka-1:9056 \
   --topic clickstream-events \
   --partitions 12 \
   --replication-factor 3 \
@@ -415,7 +415,7 @@ kafka-topics.sh --create \
 
 # Verify
 kafka-topics.sh --describe \
-  --bootstrap-server kafka-1:9092 \
+  --bootstrap-server kafka-1:9056 \
   --topic clickstream-events
 ```
 
@@ -451,7 +451,7 @@ global:
 scrape_configs:
   - job_name: 'ingestion-api'
     static_configs:
-      - targets: ['localhost:8081']
+      - targets: ['localhost:9051']
     metrics_path: '/actuator/prometheus'
 ```
 
@@ -469,7 +469,7 @@ scrape_configs:
 
 ```bash
 # Application readiness
-curl http://localhost:8081/actuator/health/readiness
+curl http://localhost:9051/actuator/health/readiness
 
 # Response: 200 OK
 # {"status": "UP"}
@@ -509,9 +509,9 @@ curl http://localhost:8081/actuator/health/readiness
 ```nginx
 upstream ingestion_api {
     least_conn;
-    server api-1:8081 weight=1;
-    server api-2:8081 weight=1;
-    server api-3:8081 weight=1;
+    server api-1:9051 weight=1;
+    server api-2:9051 weight=1;
+    server api-3:9051 weight=1;
 }
 
 server {
@@ -586,7 +586,7 @@ export DB_CONNECTION_STRING=$(vault kv get -field=connection-string secret/click
 - [ ] Enable CORS with specific allowed origins
 - [ ] Rate limit to prevent abuse
 - [ ] Use API keys or OAuth 2.0 for authentication
-- [ ] Firewall: restrict Kafka (9092) and MongoDB (27017) to internal network only
+- [ ] Firewall: restrict Kafka (9056) and MongoDB (9055) to internal network only
 
 ### Input Validation
 
@@ -616,7 +616,7 @@ export DB_CONNECTION_STRING=$(vault kv get -field=connection-string secret/click
 **Automated daily backup:**
 ```bash
 # MongoDB backup
-mongodump --uri "mongodb://prod:pass@mongo:27017/clickstream_db" \
+mongodump --uri "mongodb://prod:pass@mongo:9055/clickstream_db" \
           --out /backups/$(date +%Y%m%d) | \
 tar -czf - | aws s3 cp - s3://backups/mongodb-$(date +%Y%m%d).tar.gz
 

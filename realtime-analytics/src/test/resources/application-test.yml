@@ -33,7 +33,7 @@ metrics:
   websocket:
     push-interval-ms: 500
     allowed-origins:
-      - http://localhost:3000
+      - http://localhost:9054
 
 logging:
   level:

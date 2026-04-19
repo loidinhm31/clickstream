@@ -52,7 +52,7 @@ Pages (Route Components + PAGE_VIEW tracking)
 │                                                               │
 │  Real-time Path:                                              │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ WebSocket (ws://localhost:8082)                      │   │
+│  │ WebSocket (ws://localhost:9052)                      │   │
 │  │ ↓ Arrow IPC (Arrow TableRecordBatches)               │   │
 │  │ RealtimeContext (manages connection + reconnection) │   │
 │  │ ↓ useRealtimeMetrics hook                            │   │
@@ -61,7 +61,7 @@ Pages (Route Components + PAGE_VIEW tracking)
 │                                                               │
 │  Historical Path:                                             │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ REST API (http://localhost:8081/api/analytics/*)   │   │
+│  │ REST API (http://localhost:9051/api/analytics/*)   │   │
 │  │ ↓ TanStack Query (data fetching + caching)           │   │
 │  │ SessionTable / PageMetrics (render from JSON)       │   │
 │  └──────────────────────────────────────────────────────┘   │
@@ -86,10 +86,10 @@ Pages (Route Components + PAGE_VIEW tracking)
 
 - Node.js 18+ and npm
 - Backend services running:
-  - Kafka (9092)
-  - MongoDB (27017)
-  - Ingestion API (8081)
-  - Real-time Analytics (8082)
+  - Kafka (9056)
+  - MongoDB (9055)
+  - Ingestion API (9051)
+  - Real-time Analytics (9052)
 
 ### Installation & Development
 
@@ -129,8 +129,8 @@ VITE v6.0.11  ready in 245 ms
 
 | Variable | Value | Purpose | Required |
 |----------|-------|---------|----------|
-| `VITE_API_BASE_URL` | `http://localhost:8081` | Ingestion API base URL | No (defaults to current origin) |
-| `VITE_WS_URL` | `ws://localhost:8082` | WebSocket endpoint for real-time metrics | No (defaults to ws://localhost:8082) |
+| `VITE_API_BASE_URL` | `http://localhost:9051` | Ingestion API base URL | No (defaults to current origin) |
+| `VITE_WS_URL` | `ws://localhost:9052` | WebSocket endpoint for real-time metrics | No (defaults to ws://localhost:9052) |
 
 **Development:** Vite dev server proxies all `/api/*` and `/ws/*` requests automatically (see vite.config.ts)
 
@@ -139,8 +139,8 @@ VITE v6.0.11  ready in 245 ms
 Create `frontend/.env` for custom configuration:
 
 ```env
-VITE_API_BASE_URL=http://backend.example.com:8081
-VITE_WS_URL=ws://backend.example.com:8082
+VITE_API_BASE_URL=http://backend.example.com:9051
+VITE_WS_URL=ws://backend.example.com:9052
 ```
 
 **Note:** Environment variables must be prefixed with `VITE_` to be exposed to the browser.
@@ -324,11 +324,11 @@ docker compose up -d
 
 # Terminal 2: Ingestion API (Spring Boot)
 cd ../ingestion-api
-mvn spring-boot:run  # Port 8081
+mvn spring-boot:run  # Port 9051
 
 # Terminal 3: Real-time Analytics (Arrow + WebSocket)
 cd ../realtime-analytics
-python -m realtime_analytics.server  # Port 8082
+python -m realtime_analytics.server  # Port 9052
 
 # Terminal 4: Frontend
 cd frontend
@@ -352,7 +352,7 @@ test('Batch 10 clicks and verify Kafka message', async () => {
   // Verify batch POST to /api/events/batch
   await waitFor(() => {
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://localhost:8081/api/events/batch',
+      'http://localhost:9051/api/events/batch',
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"events"')
@@ -420,7 +420,7 @@ test('Session extends on click activity', async () => {
 ```bash
 # Verify events reached Kafka
 docker exec kafka kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events \
   --from-beginning \
   --max-messages 10 \
@@ -441,7 +441,7 @@ sess-xyz-789  {"schemaVersion":"1.0","eventId":"550e8400...","userId":"user-abc-
 ```
 User opens Dashboard
     ↓
-RealtimeContext connects to ws://localhost:8082
+RealtimeContext connects to ws://localhost:9052
     ↓
 Server sends Arrow IPC TableRecordBatches
     ↓
@@ -514,8 +514,8 @@ POST /api/events/batch → Ingestion API → Kafka
 All API requests automatically proxied during dev:
 
 ```
-/api/events → http://localhost:8081/api/events
-/ws → ws://localhost:8082
+/api/events → http://localhost:9051/api/events
+/ws → ws://localhost:9052
 ```
 
 ---
@@ -525,7 +525,7 @@ All API requests automatically proxied during dev:
 | Issue | Solution |
 |-------|----------|
 | Port 3000 already in use | Change in vite.config.ts: `port: 3001` |
-| WebSocket connection fails | Verify realtime-analytics running on port 8082 |
+| WebSocket connection fails | Verify realtime-analytics running on port 9052 |
 | Events not batching | Check event queue size and timeout logic in TrackingContext |
 | TanStack Query cache not clearing | Verify `staleTime` and `cacheTime` settings |
 | TypeScript errors | Run `npm install` and check tsconfig.json |

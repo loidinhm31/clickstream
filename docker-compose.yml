@@ -21,20 +21,20 @@ services:
   # Runs as both broker (KAFKA_PROCESS_ROLES: broker,controller) and controller
   # Listeners:
   #   - CONTROLLER: Internal KRaft controller communication (port 9093)
-  #   - HOST: External access from host/WSL (port 9092)
+  #   - HOST: External access from host/WSL (port 9056)
   #   - DOCKER: Internal container communication (port 9094)
   # Topics: clickstream-events (6 partitions) created by kafka-init
   kafka:
     image: apache/kafka:3.7.0
     container_name: kafka
     ports:
-      - "9092:9092"    # Host access
+      - "9056:9056"    # Host access
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: CONTROLLER://kafka:9093,HOST://0.0.0.0:9092,DOCKER://0.0.0.0:9094
-      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://kafka:9094
+      KAFKA_LISTENERS: CONTROLLER://kafka:9093,HOST://0.0.0.0:9056,DOCKER://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9056,DOCKER://kafka:9094
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,HOST:PLAINTEXT,DOCKER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
@@ -49,7 +49,7 @@ services:
     mem_limit: 2g
     cpus: 2
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9056 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,7 +85,7 @@ services:
   # Kafbat Kafka UI - Web interface for Kafka cluster inspection
   # Enables visual inspection of topics, messages, consumer groups, and partitions
   # Connects to Kafka via DOCKER listener (kafka:9094) for inter-container communication
-  # Accessible at http://localhost:8080
+  # Accessible at http://localhost:9050
   # Latest tag used due to Docker Hub versioning scheme (stable and actively maintained)
   kafka-ui:
     # Using :latest due to versioning scheme (v0.7.2 and similar tags not available on Docker Hub)
@@ -93,7 +93,7 @@ services:
     image: kafbat/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "8080:8080"
+      - "9050:8080"
     environment:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: clickstream-local
@@ -116,13 +116,13 @@ services:
   # MongoDB 7.0.11 - Document database for aggregated session data
   # Stores aggregated clickstream events and session analytics
   # Initialized with clickstream_db database
-  # Accessible at mongodb://localhost:27017/clickstream_db
+  # Accessible at mongodb://localhost:9055/clickstream_db
   # WiredTiger storage engine used (default for MongoDB 7.0)
   mongodb:
     image: mongo:7.0.11
     container_name: mongodb
     ports:
-      - "27017:27017"
+      - "9055:27017"
     environment:
       MONGO_INITDB_DATABASE: clickstream_db
     volumes:

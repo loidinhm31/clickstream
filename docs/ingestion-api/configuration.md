@@ -13,7 +13,7 @@ spring:
 ```
 
 Port assignment:
-- **API Server:** 8081 (8080 reserved for Kafka UI)
+- **API Server:** 9051 (9050 reserved for Kafka UI)
 
 ---
 
@@ -26,7 +26,7 @@ Port assignment:
 ```yaml
 spring:
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: localhost:9056
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -42,7 +42,7 @@ spring:
 
 | Setting | Value | Reasoning |
 |---------|-------|-----------|
-| `bootstrap-servers` | `localhost:9092` | Single broker development; use `broker1:9092,broker2:9092,...` for cluster |
+| `bootstrap-servers` | `localhost:9056` | Single broker development; use `broker1:9056,broker2:9056,...` for cluster |
 | `acks` | `1` | Leader ack only = low latency (< 10ms p99). For high durability use `all` |
 | `compression-type` | `lz4` | LZ4 = fast compression (< 1ms). Alternative: `snappy`, `gzip`, `zstd` |
 | `batch-size` | `16384` (16KB) | Balance between throughput and latency |
@@ -63,18 +63,18 @@ spring:
 ```bash
 # Create topic (Docker container)
 docker exec kafka kafka-topics.sh --create \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events \
   --partitions 6 \
   --replication-factor 1 \
   --retention-ms 86400000  # 24 hours
 
 # Verify
-docker exec kafka kafka-topics.sh --list --bootstrap-server localhost:9092
+docker exec kafka kafka-topics.sh --list --bootstrap-server localhost:9056
 
 # Describe
 docker exec kafka kafka-topics.sh --describe \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events
 ```
 
@@ -88,7 +88,7 @@ docker exec kafka kafka-topics.sh --describe \
 spring:
   data:
     mongodb:
-      uri: mongodb://localhost:27017/clickstream_db
+      uri: mongodb://localhost:9055/clickstream_db
       auto-index-creation: false  # Disable auto-index in production
 
 spring.data.mongodb:
@@ -102,7 +102,7 @@ spring.data.mongodb:
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
-| `uri` | `mongodb://localhost:27017/clickstream_db` | Connection string (username/password for production) |
+| `uri` | `mongodb://localhost:9055/clickstream_db` | Connection string (username/password for production) |
 | `auto-index-creation` | `false` | Manually create indexes via MongoIndexConfig (recommended for production) |
 | `max-pool-size` | `100` | Max concurrent connections |
 | `min-pool-size` | `10` | Maintain minimum idle pool |
@@ -286,7 +286,7 @@ logging:
 
 ```
 2026-04-18 10:30:00.123 [main] INFO  com.clickstream.ClickstreamApplication - Starting Clickstream Application
-2026-04-18 10:30:05.456 [http-nio-8081-exec-1] DEBUG com.clickstream.controller.EventController - Received single event: type=CLICK, sessionId=sess-xyz-789
+2026-04-18 10:30:05.456 [http-nio-9051-exec-1] DEBUG com.clickstream.controller.EventController - Received single event: type=CLICK, sessionId=sess-xyz-789
 2026-04-18 10:30:05.460 [kafka-producer-thread] DEBUG com.clickstream.service.EventPublisher - Publishing event: sessionId=sess-xyz-789, type=CLICK, eventId=e1
 ```
 
@@ -297,7 +297,7 @@ logging:
 ### Development (default)
 
 **File:** `application.yml`
-- Kafka: localhost:9092
+- Kafka: localhost:9056
 - MongoDB: localhost with auto-index creation enabled
 - Logging: DEBUG
 - CORS: http://localhost:3000
@@ -305,8 +305,8 @@ logging:
 ### Docker
 
 **File:** `application-docker.yml`
-- Kafka: kafka:9092 (service name)
-- MongoDB: mongo:27017 (service name)
+- Kafka: kafka:9056 (service name)
+- MongoDB: mongo:9055 (service name)
 - Logging: INFO
 
 **To use:**
@@ -321,7 +321,7 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=docker
 ```yaml
 spring:
   kafka:
-    bootstrap-servers: kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092
+    bootstrap-servers: kafka-broker-1:9056,kafka-broker-2:9056,kafka-broker-3:9056
     producer:
       acks: all  # Wait for all replicas
       retries: 10

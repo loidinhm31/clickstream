@@ -3,13 +3,13 @@ spring:
     name: clickstream-spark-etl-test
 
 kafka:
-  bootstrap-servers: localhost:9092
+  bootstrap-servers: localhost:9056
   topic: test-clickstream-events
   group-id: test-spark-etl-consumer
   starting-offsets: earliest
 
 mongodb:
-  uri: mongodb://localhost:27017
+  uri: mongodb://localhost:9055
   database: clickstream_test_db
   collections:
     session-aggregates: test_session_aggregates

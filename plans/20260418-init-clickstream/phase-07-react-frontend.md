@@ -173,7 +173,7 @@ export function useRealtimeMetrics(): {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8082/ws/realtime/metrics');
+    const ws = new WebSocket('ws://localhost:9052/ws/realtime/metrics');
     ws.binaryType = 'arraybuffer';
 
     ws.onopen = () => setConnected(true);
@@ -320,7 +320,7 @@ export function useSessionAnalytics(filters: {
 - **apache-arrow bundle size:** ~200KB gzipped. Acceptable for analytics dashboard. Can lazy-load if needed.
 - **WebSocket reconnection storms:** Implement exponential backoff (3s, 6s, 12s, max 30s).
 - **sendBeacon limitations:** Max ~64KB payload. 10 events × 500B = 5KB, well within limit.
-- **CORS issues:** Configure Vite dev proxy or backend CORS for localhost:3000 → localhost:8081/8082.
+- **CORS issues:** Configure Vite dev proxy or backend CORS for localhost:3000 → localhost:9051/9052.
 
 ## Security Considerations
 - sessionId generated client-side (UUID v4) — not guessable, not PII

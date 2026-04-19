@@ -75,9 +75,9 @@ make stop-all     # Stop everything
 #### Accessing the Application
 
 Once started:
-- Frontend UI: http://localhost:5173
-- Kafka UI: http://localhost:8080
-- MongoDB: mongodb://localhost:27017/clickstream_db
+- Frontend UI: http://localhost:9054
+- Kafka UI: http://localhost:9050
+- MongoDB: mongodb://localhost:9055/clickstream_db
 
 ### Manual Setup (Alternative)
 
@@ -90,21 +90,21 @@ bash scripts/verify-setup.sh  # Verify setup
 ```
 
 2. **Access services:**
-- **Kafka UI:** http://localhost:8080
-- **Kafka Broker:** localhost:9092
-- **MongoDB:** mongodb://localhost:27017/clickstream_db
+- **Kafka UI:** http://localhost:9050
+- **Kafka Broker:** localhost:9056
+- **MongoDB:** mongodb://localhost:9055/clickstream_db
 
 ### Services
 
 | Service | Port | Description |
 |---------|------|-------------|
-| React Frontend | 5173 | React 19 analytics dashboard (Vite dev server) |
-| Ingestion API | 8081 | Spring Boot REST API for event ingestion (`/api/events`) |
-| Real-time Analytics | 8082 | WebSocket server for live metrics (Arrow IPC protocol) |
-| Raw Archiver | 8083 | Kafka consumer writing raw events to Parquet + health endpoint |
-| Apache Kafka | 9092 | Message broker (KRaft mode), topic: `clickstream-events` (6 partitions) |
-| Kafbat UI | 8080 | Web UI for Kafka inspection and topic monitoring |
-| MongoDB | 27017 | Document database for aggregated session/page data |
+| React Frontend | 9054 | React 19 analytics dashboard (Vite dev server) |
+| Ingestion API | 9051 | Spring Boot REST API for event ingestion (`/api/events`) |
+| Real-time Analytics | 9052 | WebSocket server for live metrics (Arrow IPC protocol) |
+| Raw Archiver | 9053 | Kafka consumer writing raw events to Parquet + health endpoint |
+| Apache Kafka | 9056 | Message broker (KRaft mode), topic: `clickstream-events` (6 partitions) |
+| Kafbat UI | 9050 | Web UI for Kafka inspection and topic monitoring |
+| MongoDB | 9055 | Document database for aggregated session/page data |
 | Spark ETL | — | Structured Streaming job (runs in Docker, logs via docker compose) |
 
 ### Kafka Topics
@@ -402,7 +402,7 @@ bash scripts/verify-setup.sh
 ```bash
 cd ingestion-api
 mvn spring-boot:run
-# API running on http://localhost:8081
+# API running on http://localhost:9051
 ```
 
 **3. Build and run Spark ETL (Phase 4):**
@@ -486,12 +486,12 @@ The `kafka-init` service depends on Kafka's `service_healthy` condition, ensurin
 # Produce test event
 echo '{"eventId":"test-1","eventType":"CLICK","timestamp":1234567890}' | \
   docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events
 
 # Consume events
 docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events \
   --from-beginning
 ```
@@ -521,18 +521,18 @@ If you encounter "port already in use" errors:
 ```bash
 # Check which process is using the port
 # On Windows/WSL:
-netstat -ano | findstr :9092
-netstat -ano | findstr :8080
-netstat -ano | findstr :27017
+netstat -ano | findstr :9056
+netstat -ano | findstr :9050
+netstat -ano | findstr :9055
 
 # On Linux/macOS:
-lsof -i :9092
-lsof -i :8080
-lsof -i :27017
+lsof -i :9056
+lsof -i :9050
+lsof -i :9055
 
 # Option 1: Stop the conflicting service
 # Option 2: Change ports in docker-compose.yml
-# Example: "9093:9092" instead of "9092:9092"
+# Example: "9093:9056" instead of "9056:9056"
 ```
 
 ### Kafka Not Ready
@@ -544,7 +544,7 @@ If services fail to start or topics aren't created:
 docker logs kafka
 
 # Verify Kafka is responding
-docker exec kafka /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092
+docker exec kafka /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9056
 
 # Restart with clean state
 docker compose down -v
@@ -568,7 +568,7 @@ docker ps | grep mongodb
 
 ### WSL Docker Bridge Networking
 
-If services can't communicate or localhost:9092 doesn't work from Windows:
+If services can't communicate or localhost:9056 doesn't work from Windows:
 
 ```bash
 # Verify Docker is running in WSL2 (not WSL1)

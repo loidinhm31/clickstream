@@ -37,7 +37,7 @@ class AnalyticsControllerIntegrationTest {
 
     @Container
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.11")
-            .withExposedPorts(27017);
+            .withExposedPorts(9055);
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {

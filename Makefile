@@ -26,13 +26,13 @@ RED := \033[0;31m
 NC := \033[0m # No Color
 
 # Service ports
-INGESTION_API_PORT := 8081
-REALTIME_ANALYTICS_PORT := 8082
-RAW_ARCHIVER_PORT := 8083
-FRONTEND_PORT := 5173
-KAFKA_UI_PORT := 8080
-MONGODB_PORT := 27017
-KAFKA_PORT := 9092
+INGESTION_API_PORT := 9051
+REALTIME_ANALYTICS_PORT := 9052
+RAW_ARCHIVER_PORT := 9053
+FRONTEND_PORT := 9054
+KAFKA_UI_PORT := 9050
+MONGODB_PORT := 9055
+KAFKA_PORT := 9056
 
 # PID files for background processes
 PID_DIR := .pids
@@ -206,7 +206,17 @@ start-all: start-infra start-spark start-app-services-bg start-frontend ## Start
 	@echo "  make stop-all    - Stop all services"
 	@echo ""
 
-start-app-services-bg: ## Start all Spring Boot application services in background
+free-app-ports: ## Kill any processes holding application service ports
+	@for port in $(INGESTION_API_PORT) $(REALTIME_ANALYTICS_PORT) $(RAW_ARCHIVER_PORT) $(FRONTEND_PORT); do \
+		pid=$$(ss -tlnp "sport = :$$port" 2>/dev/null | awk 'NR>1 {match($$0,/pid=([0-9]+)/,a); if(a[1]) print a[1]}'); \
+		if [ -n "$$pid" ]; then \
+			echo "  Killing stale process $$pid on port $$port"; \
+			kill -15 $$pid 2>/dev/null || true; \
+		fi; \
+	done
+	@sleep 1
+
+start-app-services-bg: free-app-ports ## Start all Spring Boot application services in background
 	@$(MAKE) start-ingestion-api
 	@sleep 5
 	@$(MAKE) start-realtime-analytics

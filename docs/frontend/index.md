@@ -19,8 +19,8 @@ npm run dev  # http://localhost:3000
 ```
 
 **Requires backend services:**
-- Ingestion API: http://localhost:8081
-- Real-time Analytics: ws://localhost:8082
+- Ingestion API: http://localhost:9051
+- Real-time Analytics: ws://localhost:9052
 
 ## Project Statistics
 
@@ -59,7 +59,7 @@ npm run dev  # http://localhost:3000
 └─────────────────────────────────────────────────────────────────┘
         ↓                           ↓
     API Calls                  WebSocket
-    /api/analytics/*           ws://localhost:8082
+    /api/analytics/*           ws://localhost:9052
     (REST + TanStack Query)    (Arrow IPC + RealtimeContext)
 ```
 

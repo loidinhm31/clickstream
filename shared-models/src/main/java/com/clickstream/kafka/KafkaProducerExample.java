@@ -107,7 +107,7 @@ public class KafkaProducerExample {
             Producer Configuration (application.yml):
             spring:
               kafka:
-                bootstrap-servers: localhost:9092
+                bootstrap-servers: localhost:9056
                 producer:
                   key-serializer: org.apache.kafka.common.serialization.StringSerializer
                   value-serializer: org.apache.kafka.common.serialization.StringSerializer

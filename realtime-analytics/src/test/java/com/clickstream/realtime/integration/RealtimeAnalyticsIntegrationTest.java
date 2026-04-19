@@ -46,7 +46,7 @@ import static org.awaitility.Awaitility.await;
 @EmbeddedKafka(
         partitions = 1,
         topics = {"clickstream-events"},
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"}
+        brokerProperties = {"listeners=PLAINTEXT://localhost:9056", "port=9056"}
 )
 @TestPropertySource(properties = {
         "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
@@ -72,7 +72,7 @@ class RealtimeAnalyticsIntegrationTest {
     void setUp() {
         // Create Kafka producer for test
         Map<String, Object> producerProps = new HashMap<>();
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9056");
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 

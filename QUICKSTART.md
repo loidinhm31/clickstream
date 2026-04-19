@@ -47,12 +47,12 @@ Once started, access:
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **Frontend** | http://localhost:5173 | Main UI |
-| **Ingestion API** | http://localhost:8081 | REST API for event ingestion |
-| **Real-time Analytics** | ws://localhost:8082/ws/metrics | WebSocket metrics stream |
-| **Raw Archiver Health** | http://localhost:8083/actuator/health | Health check |
-| **Kafka UI** | http://localhost:8080 | Kafka topic browser |
-| **MongoDB** | mongodb://localhost:27017/clickstream_db | Database |
+| **Frontend** | http://localhost:9054 | Main UI |
+| **Ingestion API** | http://localhost:9051 | REST API for event ingestion |
+| **Real-time Analytics** | ws://localhost:9052/ws/metrics | WebSocket metrics stream |
+| **Raw Archiver Health** | http://localhost:9053/actuator/health | Health check |
+| **Kafka UI** | http://localhost:9050 | Kafka topic browser |
+| **MongoDB** | mongodb://localhost:9055/clickstream_db | Database |
 
 ## Common Commands
 
@@ -131,14 +131,14 @@ Starts only Kafka, MongoDB, Kafka UI, and Spark ETL. Use this if you want to man
 make status
 
 # Check specific service health
-curl http://localhost:8081/actuator/health  # Ingestion API
-curl http://localhost:8082/actuator/health  # Real-time Analytics
-curl http://localhost:8083/actuator/health  # Raw Archiver
+curl http://localhost:9051/actuator/health  # Ingestion API
+curl http://localhost:9052/actuator/health  # Real-time Analytics
+curl http://localhost:9053/actuator/health  # Raw Archiver
 ```
 
 ### Viewing Kafka Messages
 
-1. Open Kafka UI: http://localhost:8080
+1. Open Kafka UI: http://localhost:9050
 2. Navigate to Topics → `clickstream-events`
 3. Browse messages in real-time
 
@@ -146,7 +146,7 @@ curl http://localhost:8083/actuator/health  # Raw Archiver
 
 ```bash
 # Connect via mongosh
-mongosh mongodb://localhost:27017/clickstream_db
+mongosh mongodb://localhost:9055/clickstream_db
 
 # Query session aggregates
 db.session_aggregates.find().pretty()
@@ -180,10 +180,10 @@ make logs
 ### Port Conflicts
 
 If ports are already in use, stop conflicting services or modify ports in `Makefile`:
-- `INGESTION_API_PORT=8081`
-- `REALTIME_ANALYTICS_PORT=8082`
-- `RAW_ARCHIVER_PORT=8083`
-- `FRONTEND_PORT=5173`
+- `INGESTION_API_PORT=9051`
+- `REALTIME_ANALYTICS_PORT=9052`
+- `RAW_ARCHIVER_PORT=9053`
+- `FRONTEND_PORT=9054`
 
 ### Maven Build Issues
 
@@ -232,14 +232,14 @@ make start-all
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         FRONTEND (React)                        │
-│                    http://localhost:5173                        │
+│                    http://localhost:9054                        │
 └────────┬────────────────────────────────────────────────┬───────┘
          │ HTTP/REST                            WebSocket │
          ▼                                                 ▼
 ┌────────────────────┐                      ┌──────────────────────┐
 │  Ingestion API     │                      │ Real-time Analytics  │
 │  (Spring Boot)     │                      │ (Arrow + WebSocket)  │
-│  :8081             │                      │ :8082                │
+│  :9051             │                      │ :9052                │
 └────────┬───────────┘                      └──────────┬───────────┘
          │ Kafka Produce                               │ Kafka Consume
          │                                             │
@@ -247,7 +247,7 @@ make start-all
 ┌─────────────────────────────────────────────────────────────────┐
 │                   KAFKA (Event Stream)                          │
 │                   Topic: clickstream-events                     │
-│                   localhost:9092                                │
+│                   localhost:9056                                │
 └────┬──────────────────────────┬──────────────────────────┬──────┘
      │                          │                          │
      │ Consumer                 │ Consumer                 │ Consumer
@@ -255,7 +255,7 @@ make start-all
 ┌─────────────┐      ┌───────────────────┐     ┌─────────────────┐
 │ Spark ETL   │      │ Real-time Analytics│     │ Raw Archiver    │
 │ (Docker)    │      │ Engine             │     │ (Spring Boot)   │
-│             │      │                    │     │ :8083           │
+│             │      │                    │     │ :9053           │
 └──────┬──────┘      └──────┬────────────┘     └────────┬────────┘
        │                    │                           │
        │ Write              │ In-Memory                 │ Write
@@ -263,7 +263,7 @@ make start-all
        ▼                    │                           ▼
 ┌─────────────┐             │                  ┌─────────────────┐
 │  MongoDB    │             │                  │  Data Lake      │
-│  :27017     │◄────────────┘                  │  (Filesystem)   │
+│  :9055     │◄────────────┘                  │  (Filesystem)   │
 │             │     Query for                  │  Parquet Files  │
 └─────────────┘     Historical Data            └─────────────────┘
 ```
@@ -293,8 +293,8 @@ make start-all
 
 ## Next Steps
 
-1. **Test the pipeline**: Open http://localhost:5173 and interact with the UI
-2. **Monitor Kafka**: Open http://localhost:8080 and watch events flow
+1. **Test the pipeline**: Open http://localhost:9054 and interact with the UI
+2. **Monitor Kafka**: Open http://localhost:9050 and watch events flow
 3. **Check MongoDB**: Query aggregated data with `mongosh`
 4. **View Parquet files**: Check `data-lake/raw-events/` directory
 5. **Customize**: Modify services and restart with `make restart-all`

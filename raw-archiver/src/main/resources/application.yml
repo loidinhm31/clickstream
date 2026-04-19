@@ -2,8 +2,11 @@ spring:
   application:
     name: raw-archiver
 
+server:
+  port: 9053
+
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9056}
     consumer:
       group-id: raw-archiver-group
       auto-offset-reset: earliest      # don't miss events on first run

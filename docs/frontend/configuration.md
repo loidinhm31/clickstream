@@ -8,8 +8,8 @@ Complete environment setup and configuration reference for the React frontend.
 
 | Variable | Default Value | Purpose | Required |
 |----------|----------------|---------|----------|
-| `VITE_API_BASE_URL` | `http://localhost:8081` | Backend Ingestion API endpoint | No |
-| `VITE_WS_URL` | `ws://localhost:8082` | Real-time Analytics WebSocket | No |
+| `VITE_API_BASE_URL` | `http://localhost:9051` | Backend Ingestion API endpoint | No |
+| `VITE_WS_URL` | `ws://localhost:9052` | Real-time Analytics WebSocket | No |
 
 ### Creating .env File
 
@@ -17,10 +17,10 @@ Create `frontend/.env` in the project root:
 
 ```env
 # Backend API
-VITE_API_BASE_URL=http://localhost:8081
+VITE_API_BASE_URL=http://localhost:9051
 
 # Real-time WebSocket
-VITE_WS_URL=ws://localhost:8082
+VITE_WS_URL=ws://localhost:9052
 ```
 
 **Note:** All `VITE_*` variables are automatically exposed to the browser code. Variables NOT prefixed with `VITE_` are private to the build process.
@@ -31,12 +31,12 @@ During `npm run build`, Vite replaces all `import.meta.env.VITE_*` references wi
 
 ```typescript
 // In your code
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8082'
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9051'
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:9052'
 
 // After build:
-const API_URL = 'http://localhost:8081'  // Replaced at build time
-const WS_URL = 'ws://localhost:8082'
+const API_URL = 'http://localhost:9051'  // Replaced at build time
+const WS_URL = 'ws://localhost:9052'
 ```
 
 ---
@@ -55,12 +55,12 @@ export default defineConfig({
     proxy: {
       // Proxy /api/* requests to Ingestion API
       '/api': {
-        target: 'http://localhost:8081',
+        target: 'http://localhost:9051',
         changeOrigin: true,
       },
       // Proxy /ws/* WebSocket connections
       '/ws': {
-        target: 'ws://localhost:8082',
+        target: 'ws://localhost:9052',
         ws: true,
       },
     },
@@ -75,15 +75,15 @@ During development (`npm run dev`), Vite proxies requests:
 ```
 Browser Request     Dev Server      Backend
 ────────────────    ──────────────  ────────────
-GET /api/... ────→ /api proxy   ──→ :8081/api/...
-POST /api/... ───→ /api proxy   ──→ :8081/api/...
-ws://... ─────────→ /ws proxy   ──→ ws://localhost:8082
+GET /api/... ────→ /api proxy   ──→ :9051/api/...
+POST /api/... ───→ /api proxy   ──→ :9051/api/...
+ws://... ─────────→ /ws proxy   ──→ ws://localhost:9052
 ```
 
 **Benefits:**
 - No CORS headers needed during development
 - Same origin for all requests
-- Simplifies API calls (`GET /api/sessions` instead of `GET http://localhost:8081/api/sessions`)
+- Simplifies API calls (`GET /api/sessions` instead of `GET http://localhost:9051/api/sessions`)
 
 ### API URL in Production
 
@@ -154,7 +154,7 @@ export default [
 
 ## API Endpoints
 
-### Ingestion API (http://localhost:8081)
+### Ingestion API (http://localhost:9051)
 
 | Method | Endpoint | Purpose | Request Body |
 |--------|----------|---------|--------------|
@@ -164,12 +164,12 @@ export default [
 | GET | `/api/analytics/pages` | Fetch page metrics | Query params: `?page=0&size=10` |
 | GET | `/api/analytics/journeys` | Fetch user journeys | Query params: `?sessionId=...` |
 
-### Real-time Analytics WebSocket (ws://localhost:8082)
+### Real-time Analytics WebSocket (ws://localhost:9052)
 
 **Protocol:** Arrow IPC over WebSocket
 
 **Connection Flow:**
-1. Browser connects to `ws://localhost:8082`
+1. Browser connects to `ws://localhost:9052`
 2. Server responds with first Arrow TableRecordBatch
 3. Subsequent batches stream in real-time
 4. Connection auto-reconnects on close
@@ -367,12 +367,12 @@ server {
 
     # API proxy
     location /api/ {
-        proxy_pass http://api:8081;
+        proxy_pass http://api:9051;
     }
 
     # WebSocket proxy
     location /ws/ {
-        proxy_pass http://realtime:8082;
+        proxy_pass http://realtime:9052;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -389,7 +389,7 @@ server {
 | Port 3000 already in use | Change `server.port` in vite.config.ts |
 | CORS errors | Verify Vite proxy config and backend CORS settings |
 | Environment variables undefined | Ensure variables prefixed with `VITE_`, restart dev server |
-| WebSocket connection fails | Check realtime-analytics running on port 8082 |
+| WebSocket connection fails | Check realtime-analytics running on port 9052 |
 | Build fails with TypeScript errors | Run `npm run lint` and fix issues |
 | Dependencies not installing | Delete node_modules, run `npm install` again |
 

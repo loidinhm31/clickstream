@@ -35,13 +35,13 @@ docker compose ps
 
 # Expected output:
 # NAME                PORTS
-# kafka               0.0.0.0:9092->9092/tcp
-# mongo               0.0.0.0:27017->27017/tcp
+# kafka               0.0.0.0:9056->9056/tcp
+# mongo               0.0.0.0:9055->9055/tcp
 ```
 
 **Access:** 
-- Kafka UI: http://localhost:8080 (check topics, messages)
-- MongoDB: `mongosh localhost:27017` (CLI access)
+- Kafka UI: http://localhost:9050 (check topics, messages)
+- MongoDB: `mongosh localhost:9055` (CLI access)
 
 ### 3. Build Ingestion API
 
@@ -88,10 +88,10 @@ java -jar target/ingestion-api-1.0.0-SNAPSHOT.jar
 ...
 2026-04-18 10:30:05.456 INFO Started ClickstreamApplication in 5.333 seconds (JVM running for 5.789)
 
-Tomcat started on port 8081 with context path ''
+Tomcat started on port 9051 with context path ''
 ```
 
-Application is ready on `http://localhost:8081`
+Application is ready on `http://localhost:9051`
 
 ---
 
@@ -130,7 +130,7 @@ mvn verify -Dtest=EventControllerIntegrationTest
 #### Test 1: Single Event Ingestion
 
 ```bash
-curl -X POST http://localhost:8081/api/events \
+curl -X POST http://localhost:9051/api/events \
   -H "Content-Type: application/json" \
   -d '{
     "eventId": "e1",
@@ -149,7 +149,7 @@ curl -X POST http://localhost:8081/api/events \
 #### Test 2: Batch Ingestion
 
 ```bash
-curl -X POST http://localhost:8081/api/events/batch \
+curl -X POST http://localhost:9051/api/events/batch \
   -H "Content-Type: application/json" \
   -d '[
     {"eventId": "e1", "userId": "u1", "sessionId": "s1", "eventType": "PAGE_VIEW", "pageUrl": "https://example.com", "timestamp": '$(date +%s000)'},
@@ -164,7 +164,7 @@ curl -X POST http://localhost:8081/api/events/batch \
 ```bash
 # Check if events appear in Kafka topic
 docker exec kafka kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events \
   --from-beginning \
   --max-messages 5
@@ -175,7 +175,7 @@ docker exec kafka kafka-console-consumer.sh \
 #### Test 4: Query Analytics
 
 ```bash
-curl http://localhost:8081/api/analytics/sessions?page=0&size=10
+curl http://localhost:9051/api/analytics/sessions?page=0&size=10
 
 # Expected response:
 # {
@@ -204,7 +204,7 @@ events = [
   for i in range(101)
 ]
 print(json.dumps(events))
-EOF | curl -X POST http://localhost:8081/api/events/batch \
+EOF | curl -X POST http://localhost:9051/api/events/batch \
   -H "Content-Type: application/json" \
   -d @-
 
@@ -216,7 +216,7 @@ EOF | curl -X POST http://localhost:8081/api/events/batch \
 
 ```bash
 # Missing required field
-curl -X POST http://localhost:8081/api/events \
+curl -X POST http://localhost:9051/api/events \
   -H "Content-Type: application/json" \
   -d '{"eventType": "CLICK"}'  # Missing userId, sessionId, etc.
 
@@ -227,7 +227,7 @@ curl -X POST http://localhost:8081/api/events \
 #### Test 7: CORS Preflight
 
 ```bash
-curl -X OPTIONS http://localhost:8081/api/events \
+curl -X OPTIONS http://localhost:9051/api/events \
   -H "Origin: http://localhost:3000" \
   -H "Access-Control-Request-Method: POST"
 
@@ -264,9 +264,9 @@ curl -X OPTIONS http://localhost:8081/api/events \
 **Application logs appear in terminal:**
 
 ```
-2026-04-18 10:30:05.456 [http-nio-8081-exec-1] DEBUG com.clickstream.controller.EventController - Received single event: type=CLICK, sessionId=sess-xyz-789
+2026-04-18 10:30:05.456 [http-nio-9051-exec-1] DEBUG com.clickstream.controller.EventController - Received single event: type=CLICK, sessionId=sess-xyz-789
 2026-04-18 10:30:05.460 [kafka-producer-thread] DEBUG com.clickstream.service.EventPublisher - Publishing event: sessionId=sess-xyz-789, type=CLICK
-2026-04-18 10:30:05.465 [http-nio-8081-exec-1] INFO  com.clickstream.controller.EventController - Event accepted: eventId=e1
+2026-04-18 10:30:05.465 [http-nio-9051-exec-1] INFO  com.clickstream.controller.EventController - Event accepted: eventId=e1
 ```
 
 **Increase Verbosity:**
@@ -278,7 +278,7 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--logging.level.com.clickstream
 ### Health Check
 
 ```bash
-curl http://localhost:8081/actuator/health
+curl http://localhost:9051/actuator/health
 
 # Expected response:
 # {"status": "UP"}
@@ -288,14 +288,14 @@ curl http://localhost:8081/actuator/health
 
 **Check topics exist:**
 ```bash
-docker exec kafka kafka-topics.sh --list --bootstrap-server localhost:9092
+docker exec kafka kafka-topics.sh --list --bootstrap-server localhost:9056
 # Should show: clickstream-events
 ```
 
 **Monitor topic throughput:**
 ```bash
 docker exec kafka kafka-consumer-groups.sh \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --group kafka-consumer-group \
   --describe
 ```
@@ -303,12 +303,12 @@ docker exec kafka kafka-consumer-groups.sh \
 **Reset topic (clear all messages):**
 ```bash
 docker exec kafka kafka-topics.sh --delete \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events
 
 # Recreate topic
 docker exec kafka kafka-topics.sh --create \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events \
   --partitions 6
 ```
@@ -317,7 +317,7 @@ docker exec kafka kafka-topics.sh --create \
 
 **Connect via CLI:**
 ```bash
-mongosh localhost:27017
+mongosh localhost:9055
 use clickstream_db
 
 # Check collections exist
@@ -371,7 +371,7 @@ ERROR: com.mongodb.MongoTimeoutException: Timed out after 10000 ms
 docker compose ps mongo
 
 # Verify connection
-mongosh localhost:27017
+mongosh localhost:9055
 
 # If stuck, restart container
 docker compose restart mongo
@@ -389,7 +389,7 @@ HTTP 429 Too Many Requests
 2. Increase `Bandwidth` in `RateLimitFilter.java`
 3. Restart application: `Ctrl+C` and `mvn spring-boot:run`
 
-### Issue: "Port 8081 already in use"
+### Issue: "Port 9051 already in use"
 
 **Symptom:**
 ```
@@ -398,14 +398,14 @@ ERROR: Address already in use: bind
 
 **Solution:**
 ```bash
-# Find process using port 8081
-lsof -i :8081
+# Find process using port 9051
+lsof -i :9051
 
 # Kill it
 kill -9 <PID>
 
 # Or use different port
-mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8082"
+mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=9052"
 ```
 
 ### Issue: "No events appear in Kafka topic"
@@ -433,7 +433,7 @@ mvn spring-boot:run
 
 # Monitor Kafka consumer
 docker exec kafka kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9056 \
   --topic clickstream-events \
   --from-beginning
 ```
@@ -442,7 +442,7 @@ docker exec kafka kafka-console-consumer.sh \
 
 **Symptom:**
 ```
-Access to XMLHttpRequest at 'http://localhost:8081/api/events' 
+Access to XMLHttpRequest at 'http://localhost:9051/api/events' 
 from origin 'http://localhost:3000' has been blocked by CORS policy
 ```
 
@@ -498,7 +498,7 @@ git push origin feature/my-feature
 ```bash
 # Test single event endpoint
 ab -n 1000 -c 100 -p event.json -T application/json \
-   http://localhost:8081/api/events
+   http://localhost:9051/api/events
 
 # Output shows:
 # Requests per second: XXX
