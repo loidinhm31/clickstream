@@ -6,30 +6,32 @@ Complete documentation for the event tracking system, session management, and ba
 
 The event tracking system automatically captures user interactions (clicks, page views, scrolls, hovers) and sends them to the backend API for ingestion into Kafka.
 
+### Security Measures
+
+- **XSS Protection:** All `targetElement` paths are sanitized using `DOMPurify` before submission to prevent malicious scripts from being injected into the metrics pipeline.
+- **Sensitive Data Filtering:** Automatically filters out tracking for elements marked with sensitive attributes (e.g., `data-sensitive="true"`) or matching sensitive names (e.g., `password`, `creditCard`, `ssn`).
+
 ### Key Features
 
 - **Automatic batching:** Events queued and sent in batches (10 events OR 2-second timeout)
 - **Session management:** 30-minute timeout with auto-renewal on activity
 - **Session persistence:** Across page refreshes and subdomains
 - **Event validation:** Schema validation before submission
-- **Retry capability:** Failed batches retry automatically
+- **Reliable Submission:** Uses `navigator.sendBeacon` with `fetch` fallback
+- **Real-time metrics:** WebSocket connection with automatic exponential backoff and jitter
 
 ### Data Flow
 
-```
-User Interaction (click, page view, scroll)
-        ↓
-TrackingContext.trackEvent()
-        ↓
-Event Queue (max 10 items)
-        ↓
-Queue ≥ 10 events OR 2s timeout?
-        ↓ YES: Send Batch
-POST /api/events/batch → Ingestion API
-        ↓
-Kafka: clickstream-events topic (sessionId partition key)
-        ↓
-Spark ETL / Real-time Analytics / Raw Archiver
+```mermaid
+graph TD
+    User[User Interaction] --> Hook[useClickTracker]
+    Hook --> Service[EventTrackingService]
+    Service -- Sanitization & Filtering --> Queue[Event Buffer]
+    Queue -- 10 events or 2s --> API[POST /api/events/batch]
+    API --> Kafka[Kafka: clickstream-events]
+    Kafka --> ETL[Spark ETL]
+    Kafka --> Analytics[Real-time Analytics]
+    Analytics -- WebSocket (WS) --> Dashboard[RealtimeDashboard]
 ```
 
 ---
@@ -57,9 +59,6 @@ if (elapsed > SESSION_TIMEOUT) {
   // Session VALID: Renew
   sessionTimestamp = now  // Update timestamp
 }
-
-// 3. PERSISTENCE: Session ID survives page refreshes
-// Stored in sessionStorage, cleared only when tab closes
 ```
 
 ### Session Timeout Rules
@@ -74,147 +73,64 @@ if (elapsed > SESSION_TIMEOUT) {
 | Page refresh < 30min | sessionStorage persists | Same sessionId |
 | Close tab | sessionStorage cleared | Session lost |
 
-### Example: Session Timeline
-
-```
-T+00:00 - User opens app
-├─ Session ID: uuid-1
-└─ Timestamp: 10:00:00
-
-T+00:45 - User clicks button
-├─ Elapsed: 45 seconds (< 30min)
-├─ Session ID: uuid-1 (unchanged)
-└─ Timestamp: 10:00:45 (renewed)
-
-T+01:20 - User refreshes page
-├─ Elapsed: 35 seconds from last activity (< 30min)
-├─ Session ID: uuid-1 (from sessionStorage)
-└─ Timestamp: 10:01:20 (renewed)
-
-T+01:55 (T+1h55m total) - User clicks button
-├─ Elapsed: 35 minutes from start (> 30min)
-├─ Session ID: uuid-2 (NEW - session expired)
-└─ Timestamp: 10:01:55
-```
-
 ---
 
 ## Event Tracking in Components
 
-### Tracking Levels by Component Level
-
-```
-ATOMS (Button, Badge, MetricValue)
-❌ NO TRACKING
-
-MOLECULES (MetricCard, SessionRow, PageViewRow)
-❌ NO TRACKING (handled by parent Organism)
-
-ORGANISMS (RealtimeDashboard, SessionTable, NavigationBar)
-✅ TRACK INTERACTIONS at this level
-  - Dashboard view loaded
-  - Button clicks
-  - Row selections
-  - Navigation clicks
-
-PAGES (DashboardPage, SessionsPage)
-✅ TRACK PAGE VIEWS automatically on mount
-  - /dashboard → PAGE_VIEW
-  - /sessions → PAGE_VIEW
-  - /journeys → PAGE_VIEW
-```
-
 ### Tracking Implementation
 
-#### 1. Track Page Views (in Pages)
+#### 1. Security-Aware Click Tracking
+
+The `useClickTracker` hook automatically handles sensitive data filtering based on element attributes.
 
 ```typescript
-// src/components/pages/DashboardPage.tsx
-import { usePageViewTracking } from '../hooks/usePageViewTracking'
+// src/components/organisms/ExampleComponent.tsx
+import { useClickTracker } from '../hooks/useClickTracker';
 
-export function DashboardPage() {
-  // Automatically tracks PAGE_VIEW event on component mount
-  usePageViewTracking({
-    pageName: 'Dashboard',
-    url: window.location.pathname,
-  })
+export function ExampleComponent() {
+  const { trackClick } = useClickTracker('example-component');
 
   return (
-    <DashboardTemplate>
-      {/* Page content */}
-    </DashboardTemplate>
-  )
-}
-```
+    <div>
+      {/* Tracked interaction */}
+      <button onClick={(e) => trackClick('submit-btn', {}, e)}>Submit</button>
 
-#### 2. Track Clicks (in Organisms)
-
-```typescript
-// src/components/organisms/RealtimeDashboard.tsx
-import { useTrackEvent } from '../hooks/useTrackEvent'
-
-export function RealtimeDashboard() {
-  const trackEvent = useTrackEvent()
-
-  const handleRefresh = () => {
-    // Track the refresh action
-    trackEvent({
-      eventType: 'CLICK',
-      targetElement: 'dashboard-refresh-btn',
-      metadata: {
-        action: 'refresh_metrics',
-        timestamp: Date.now(),
-      },
-    })
-
-    // Perform refresh logic
-    refetchMetrics()
-  }
-
-  return (
-    <div className="dashboard">
-      <button onClick={handleRefresh}>Refresh</button>
-      {/* Metrics cards */}
+      {/* SECURE: Sensitive input - automatically ignored by tracking */}
+      <input type="password" data-sensitive="true" />
+      
+      {/* SECURE: Manually ignored */}
+      <button data-track="false">Private Action</button>
     </div>
-  )
+  );
 }
 ```
 
-#### 3. Track Table Interactions (in Organisms)
+---
+
+## Real-time Metrics Flow
+
+The dashboard connects to a WebSocket server for real-time updates.
+
+### Connection Reliability
+
+To maintain stability under network fluctuations:
+- **Max Retries:** Up to 10 reconnection attempts.
+- **Exponential Backoff:** Delay increases with each attempt (3s, 6s, 12s...).
+- **Jitter:** Random added delay (up to 1s) to prevent thundering herd on server recovery.
 
 ```typescript
-// src/components/organisms/SessionTable.tsx
-export function SessionTable({ sessions }: Props) {
-  const trackEvent = useTrackEvent()
+// src/contexts/RealtimeContext.tsx
+// Logic summary:
+const delay = Math.min(reconnectDelayRef.current, 30000) + (Math.random() * 1000);
+```
 
-  const handleSessionClick = (sessionId: string) => {
-    trackEvent({
-      eventType: 'CLICK',
-      targetElement: `session-row-${sessionId}`,
-      metadata: {
-        sessionId,
-        rowIndex: sessions.findIndex(s => s.id === sessionId),
-      },
-    })
+---
 
-    // Navigate to session details
-    navigate(`/sessions/${sessionId}`)
-  }
+## Related Documentation
 
-  return (
-    <table>
-      <tbody>
-        {sessions.map((session, idx) => (
-          <SessionRow
-            key={session.id}
-            session={session}
-            onClick={() => handleSessionClick(session.id)}
-          />
-        ))}
-      </tbody>
-    </table>
-  )
-}
+- [Integration Testing Guide](./integration-testing.md)
+- [Configuration Guide](./configuration.md)
+- [System Architecture](../system-architecture.md)
 ```
 
 ---

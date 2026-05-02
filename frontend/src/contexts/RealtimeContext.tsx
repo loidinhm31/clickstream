@@ -26,6 +26,8 @@ export function RealtimeProvider({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(3000);
+  const retryCountRef = useRef(0);
+  const MAX_RETRIES = 10;
   const activeRef = useRef(false);
 
   const connect = () => {
@@ -39,6 +41,7 @@ export function RealtimeProvider({
         if (wsRef.current !== ws) return;
         setConnected(true);
         reconnectDelayRef.current = 3000;
+        retryCountRef.current = 0;
       };
 
       ws.onclose = () => {
@@ -48,10 +51,16 @@ export function RealtimeProvider({
         wsRef.current = null;
 
         if (!activeRef.current) return;
+        
+        if (retryCountRef.current >= MAX_RETRIES) {
+          console.error(`WebSocket reconnection failed after ${MAX_RETRIES} attempts.`);
+          return;
+        }
 
-        // Exponential backoff: 3s, 6s, 12s, max 30s
-        const delay = Math.min(reconnectDelayRef.current, 30000);
+        // Exponential backoff with jitter: 3s, 6s, 12s, max 30s
+        const delay = Math.min(reconnectDelayRef.current, 30000) + (Math.random() * 1000);
         reconnectDelayRef.current *= 2;
+        retryCountRef.current++;
 
         reconnectTimeoutRef.current = setTimeout(() => {
           connect();

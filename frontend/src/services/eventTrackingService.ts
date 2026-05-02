@@ -1,4 +1,5 @@
 import { ClickEvent } from '../types/events';
+import DOMPurify from 'dompurify';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 const BATCH_ENDPOINT = '/api/events/batch';
@@ -40,10 +41,12 @@ class EventTrackingService {
   }
 
   private sanitizeTargetElement(element: string): string {
-    // Remove any HTML tags and limit length
-    return element
-      .replace(/<[^>]*>/g, '')
-      .substring(0, 200);
+    // Security: Use DOMPurify for robust XSS protection
+    // We sanitize as text to strip any HTML structures while keeping selectors
+    return DOMPurify.sanitize(element, { 
+      ALLOWED_TAGS: [], 
+      ALLOWED_ATTR: [] 
+    }).substring(0, 200);
   }
 
   private isSensitiveElement(element: string): boolean {

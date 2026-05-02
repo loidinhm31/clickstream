@@ -14,8 +14,12 @@ export interface RealtimeMetrics {
 }
 
 export function decodeArrowMetrics(buffer: ArrayBuffer): RealtimeMetrics | null {
+  if (!buffer || buffer.byteLength === 0) return null;
+  
   try {
     const table: Table = tableFromIPC(new Uint8Array(buffer));
+
+    if (table.numCols === 0) return null;
 
     // Extract metrics from Arrow table columns
     const metrics: RealtimeMetrics = {

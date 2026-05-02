@@ -28,6 +28,11 @@ export function sanitizeUrl(url: string): string {
 /**
  * Validate JWT token format (basic check)
  */
+/**
+ * WARNING: This only validates the token format and payload on the client side.
+ * It DOES NOT verify the signature. Signature verification MUST be performed
+ * by the backend on every API request to ensure authenticity.
+ */
 export function isValidJWT(token: string): boolean {
   if (!token || typeof token !== 'string') return false;
   

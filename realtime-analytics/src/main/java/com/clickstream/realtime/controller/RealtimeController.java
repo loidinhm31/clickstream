@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.HashMap;
 
 /**
  * REST controller for real-time metrics.
@@ -111,7 +112,7 @@ public class RealtimeController {
      */
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> stats() {
-        Map<String, Object> engineStats = metricsEngine.getStats();
+        Map<String, Object> engineStats = new HashMap<>(metricsEngine.getStats());
         engineStats.put("activeWebSocketSessions", websocketHandler.getActiveSessionCount());
         return ResponseEntity.ok(engineStats);
     }

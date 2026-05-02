@@ -1,4 +1,5 @@
-import { useCallback, useContext } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
+import debounce from 'lodash.debounce';
 import { TrackingContext } from '../contexts/TrackingContext';
 import { eventTrackingService } from '../services/eventTrackingService';
 import { EventMetadata, EventType, ClickEvent } from '../types/events';
@@ -35,15 +36,31 @@ export function useClickTracker(componentName: string) {
     [componentName, sessionId, userId]
   );
 
-  const trackClick = useCallback(
-    (targetElement: string, metadata?: EventMetadata, mouseEvent?: MouseEvent) => {
+  const debouncedTrackClick = useMemo(
+    () => debounce((targetElement: string, metadata?: EventMetadata, mouseEvent?: MouseEvent) => {
       trackEvent('CLICK', targetElement, {
         x: mouseEvent?.clientX ?? 0,
         y: mouseEvent?.clientY ?? 0,
         ...metadata,
       });
-    },
+    }, 200),
     [trackEvent]
+  );
+
+  const trackClick = useCallback(
+    (targetElement: string, metadata?: EventMetadata, mouseEvent?: MouseEvent) => {
+      // Security: Check for declarative sensitive attributes
+      if (mouseEvent?.target instanceof HTMLElement) {
+        const target = mouseEvent.target;
+        if (target.getAttribute('data-track') === 'false' || 
+            target.getAttribute('data-sensitive') === 'true') {
+          return;
+        }
+      }
+      // Pass synthetic event data since the original mouseEvent may be pooled or lost
+      debouncedTrackClick(targetElement, metadata, mouseEvent);
+    },
+    [debouncedTrackClick]
   );
 
   const trackPageView = useCallback(
