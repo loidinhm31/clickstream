@@ -1,3 +1,14 @@
+---
+title: "Phase 02: Core Services & Ingestion"
+description: "Building the shared model library and launching the Ingestion API"
+status: completed
+priority: P1
+effort: 2h
+branch: main
+tags: [shared-models, ingestion-api, maven, spring-boot]
+created: 2026-05-01
+---
+
 # Phase 02: Core Services & Ingestion
 
 Building the shared model library and launching the Ingestion API.
@@ -16,6 +27,9 @@ mvn clean install
 ## 2. Ingestion API
 
 The Spring Boot entry point for all clickstream events.
+
+### Dependencies
+Added `spring-boot-starter-actuator` to `ingestion-api/pom.xml` for health monitoring and metrics.
 
 **Configuration:**
 Ensure `ingestion-api/src/main/resources/application.yml` points to:
@@ -40,8 +54,13 @@ java -jar target/ingestion-api-0.0.1-SNAPSHOT.jar
 curl http://localhost:9051/actuator/health
 ```
 
+### Testing and Maintenance
+The `MetricsEngine.reset()` method is available for clearing metrics during testing and maintenance cycles.
+
 ## Summary Checklist
-- [ ] `shared-models` installed to local Maven repository
-- [ ] `ingestion-api` starts without errors
-- [ ] API successfully connects to Kafka and MongoDB
-- [ ] Health endpoint returns `{"status":"UP"}`
+- [x] `shared-models` installed to local Maven repository
+- [x] `ingestion-api` starts without errors
+- [x] API successfully connects to Kafka and MongoDB
+- [x] Health endpoint returns `{"status":"UP"}`
+- [x] Actuator added for monitoring
+- [x] `MetricsEngine.reset()` validated for test resets

@@ -1,6 +1,7 @@
 package com.clickstream.controller;
 
 import com.clickstream.model.ClickEvent;
+import com.clickstream.model.EventMetadata;
 import com.clickstream.model.EventType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -182,7 +183,7 @@ class EventControllerIntegrationTest {
     @Test
     void testCorsHeaders_Present() throws Exception {
         mockMvc.perform(get("/api/events/health")
-                        .header("Origin", "http://localhost:3000"))
+                        .header("Origin", "http://localhost:9054"))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("Access-Control-Allow-Origin"));
     }
@@ -190,16 +191,27 @@ class EventControllerIntegrationTest {
     // Helper methods
 
     private ClickEvent createTestEvent(String sessionId, EventType eventType) {
+        EventMetadata.Builder metadataBuilder = EventMetadata.builder()
+                .viewportWidth(1920)
+                .viewportHeight(1080);
+        
+        if (eventType == EventType.CLICK) {
+            metadataBuilder.x(100).y(200);
+        } else if (eventType == EventType.SCROLL) {
+            metadataBuilder.scrollDepth(0.5);
+        }
+
         return ClickEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .userId("user-test")
                 .sessionId(sessionId)
                 .eventType(eventType)
-                .targetElement("div#test")
+                .targetElement(eventType == EventType.PAGE_VIEW ? null : "div#test")
                 .pageUrl("https://example.com/test")
                 .referrerUrl("https://example.com/home")
                 .timestamp(System.currentTimeMillis())
                 .userAgent("Test Agent")
+                .metadata(metadataBuilder.build())
                 .build();
     }
 }

@@ -257,6 +257,23 @@ public class MetricsEngine {
         );
     }
 
+    /**
+     * Clear all ingested data and release Arrow memory.
+     * Useful for testing and manual state reset.
+     */
+    public synchronized void reset() {
+        logger.info("Resetting MetricsEngine, clearing {} batches", ringBuffer.size());
+        ringBuffer.forEach(tb -> {
+            try {
+                tb.batch().close();
+            } catch (Exception e) {
+                logger.error("Failed to close batch during reset", e);
+            }
+        });
+        ringBuffer.clear();
+        evictedBatchesCount.set(0);
+    }
+
     @PreDestroy
     public void shutdown() {
         logger.info("Shutting down MetricsEngine, releasing Arrow memory");

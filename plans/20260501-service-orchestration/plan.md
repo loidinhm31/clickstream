@@ -61,7 +61,7 @@ graph TD
 | Phase | Description | Key Services | Status |
 |-------|-------------|--------------|--------|
 | [Phase 01](./phase-01-infrastructure.md) | Infrastructure Layer | Kafka, MongoDB, Kafka UI | ✅ DONE (2026-05-01 22:42) |
-| [Phase 02](./phase-02-core-services.md) | Core & Ingestion | Shared Models, Ingestion API | Pending |
+| [Phase 02](./phase-02-core-services.md) | Core & Ingestion | Shared Models, Ingestion API | ✅ DONE (2026-05-01 23:30) |
 | [Phase 03](./phase-03-processing-analytics.md) | Data Processing | Spark ETL, Real-time Analytics, Raw Archiver | Pending |
 | [Phase 04](./phase-04-frontend.md) | User Interface | React Frontend | Pending |
 

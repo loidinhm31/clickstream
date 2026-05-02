@@ -1,3 +1,14 @@
+---
+title: "Phase 03: Processing & Analytics"
+description: "Starting the downstream consumers that process Kafka events"
+status: pending
+priority: P1
+effort: 2h
+branch: main
+tags: [spark, realtime-analytics, raw-archiver, kafka]
+created: 2026-05-01
+---
+
 # Phase 03: Processing & Analytics
 
 Starting the downstream consumers that process Kafka events.

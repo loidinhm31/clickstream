@@ -1,3 +1,14 @@
+---
+title: "Phase 04: Frontend"
+description: "Setup and integration of the React-based analytics dashboard"
+status: pending
+priority: P2
+effort: 1h
+branch: main
+tags: [frontend, react, vite, integration]
+created: 2026-05-01
+---
+
 # Phase 04: Frontend
 
 Setup and integration of the React-based analytics dashboard.

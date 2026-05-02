@@ -18,7 +18,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 
@@ -45,8 +47,7 @@ import static org.awaitility.Awaitility.await;
 @DirtiesContext
 @EmbeddedKafka(
         partitions = 1,
-        topics = {"clickstream-events"},
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9056", "port=9056"}
+        topics = {"clickstream-events"}
 )
 @TestPropertySource(properties = {
         "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
@@ -66,13 +67,17 @@ class RealtimeAnalyticsIntegrationTest {
     @Autowired
     private EventConsumer eventConsumer;
 
+    @Autowired
+    private EmbeddedKafkaBroker embeddedKafka;
+
     private KafkaTemplate<String, ClickEvent> kafkaTemplate;
 
     @BeforeEach
     void setUp() {
+        metricsEngine.reset();
+        
         // Create Kafka producer for test
-        Map<String, Object> producerProps = new HashMap<>();
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9056");
+        Map<String, Object> producerProps = KafkaTestUtils.producerProps(embeddedKafka);
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 
@@ -201,6 +206,16 @@ class RealtimeAnalyticsIntegrationTest {
 
     // Helper method
     private ClickEvent createTestEvent(String userId, String sessionId, EventType type, String pageUrl) {
+        com.clickstream.model.EventMetadata.Builder metadataBuilder = com.clickstream.model.EventMetadata.builder()
+                .viewportWidth(1920)
+                .viewportHeight(1080);
+        
+        if (type == EventType.CLICK) {
+            metadataBuilder.x(100).y(200);
+        } else if (type == EventType.SCROLL) {
+            metadataBuilder.scrollDepth(0.5);
+        }
+
         return ClickEvent.builder()
                 .eventId("evt-" + System.nanoTime())
                 .userId(userId)
@@ -211,7 +226,7 @@ class RealtimeAnalyticsIntegrationTest {
                 .referrerUrl(null)
                 .timestamp(System.currentTimeMillis())
                 .userAgent("Test-Agent/1.0")
-                .metadata(null)
+                .metadata(metadataBuilder.build())
                 .build();
     }
 }
