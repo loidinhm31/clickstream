@@ -10,6 +10,7 @@ export interface EventMetadata {
   readonly viewportHeight?: number;
   readonly elementText?: string;
   readonly durationMs?: number;  // HOVER: hover duration in milliseconds
+  readonly url?: string;
 }
 
 export interface ClickEvent {
