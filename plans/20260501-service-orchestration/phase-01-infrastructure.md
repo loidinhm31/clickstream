@@ -54,7 +54,7 @@ docker compose up -d kafka-ui
 ```
 
 ## Summary Checklist
-- [ ] Kafka container running and healthy
-- [ ] `clickstream-events` topic created
-- [ ] MongoDB container running and healthy
-- [ ] Kafka UI accessible
+- [x] Kafka container running and healthy on port 9056
+- [x] `clickstream-events` topic created
+- [x] MongoDB container running and healthy on port 9055
+- [x] Kafka UI accessible

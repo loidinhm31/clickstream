@@ -1,6 +1,6 @@
 ---
 title: "Service Orchestration Plan"
-status: pending
+status: in-progress
 priority: P1
 effort: 4h
 branch: main
@@ -58,12 +58,12 @@ graph TD
 
 ## Startup Phases
 
-| Phase | Description | Key Services |
-|-------|-------------|--------------|
-| [Phase 01](./phase-01-infrastructure.md) | Infrastructure Layer | Kafka, MongoDB, Kafka UI |
-| [Phase 02](./phase-02-core-services.md) | Core & Ingestion | Shared Models, Ingestion API |
-| [Phase 03](./phase-03-processing-analytics.md) | Data Processing | Spark ETL, Real-time Analytics, Raw Archiver |
-| [Phase 04](./phase-04-frontend.md) | User Interface | React Frontend |
+| Phase | Description | Key Services | Status |
+|-------|-------------|--------------|--------|
+| [Phase 01](./phase-01-infrastructure.md) | Infrastructure Layer | Kafka, MongoDB, Kafka UI | ✅ DONE (2026-05-01 22:42) |
+| [Phase 02](./phase-02-core-services.md) | Core & Ingestion | Shared Models, Ingestion API | Pending |
+| [Phase 03](./phase-03-processing-analytics.md) | Data Processing | Spark ETL, Real-time Analytics, Raw Archiver | Pending |
+| [Phase 04](./phase-04-frontend.md) | User Interface | React Frontend | Pending |
 
 ## Orchestration Logic
 
@@ -84,3 +84,20 @@ A verification script `scripts/verify-setup.sh` should be used to ensure all com
 - **Ingestion API**: `GET /actuator/health`
 - **Real-time Analytics**: `GET /api/realtime/health`
 - **Raw Archiver**: `GET /actuator/health`
+
+## Validation Summary
+
+**Validated:** 2026-05-01
+**Questions asked:** 4
+
+### Confirmed Decisions
+- **Spark ETL Execution**: Dockerized - Use Docker to manage Spark environment and dependencies.
+- **Port Strategy**: 905x Range - Use the 9050-9056 range to avoid local port conflicts.
+- **Development Workflow**: Hybrid - Infrastructure in Docker; Frontend and Ingestion API run natively for faster iteration.
+- **Automation**: Include Verification Script - Create `scripts/verify-setup.sh` to automate health checks.
+
+### Action Items
+- [x] Implement `scripts/verify-setup.sh` for infrastructure health checks.
+- [x] Ensure `docker-compose.yml` matches the 905x port range for infrastructure services.
+- [ ] Expand `scripts/verify-setup.sh` for application services (Phase 02/03).
+- [ ] Verify `frontend` and `ingestion-api` local configs use the validated port range.
