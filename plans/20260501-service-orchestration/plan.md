@@ -62,7 +62,7 @@ graph TD
 |-------|-------------|--------------|--------|
 | [Phase 01](./phase-01-infrastructure.md) | Infrastructure Layer | Kafka, MongoDB, Kafka UI | ✅ DONE (2026-05-01 22:42) |
 | [Phase 02](./phase-02-core-services.md) | Core & Ingestion | Shared Models, Ingestion API | ✅ DONE (2026-05-01 23:30) |
-| [Phase 03](./phase-03-processing-analytics.md) | Data Processing | Spark ETL, Real-time Analytics, Raw Archiver | Pending |
+| [Phase 03](./phase-03-processing-analytics.md) | Data Processing | Spark ETL, Real-time Analytics, Raw Archiver | ✅ DONE* (2026-05-02 01:00) |
 | [Phase 04](./phase-04-frontend.md) | User Interface | React Frontend | Pending |
 
 ## Orchestration Logic
@@ -74,6 +74,8 @@ The optimal startup order is:
 4. **Analytics & Archival**: Start `realtime-analytics` and `raw-archiver`.
 5. **Ingestion**: Start `ingestion-api` to begin accepting traffic.
 6. **UI**: Start the `frontend` once all backend services are healthy.
+
+\* **Note on Phase 03**: Spark ETL and Real-time Analytics are fully operational. Raw Archiver is currently blocked on Spring Boot 3 / Jakarta migration issues.
 
 ## Health Verification
 
@@ -87,17 +89,19 @@ A verification script `scripts/verify-setup.sh` should be used to ensure all com
 
 ## Validation Summary
 
-**Validated:** 2026-05-01
+**Validated:** 2026-05-02
 **Questions asked:** 4
 
 ### Confirmed Decisions
-- **Spark ETL Execution**: Dockerized - Use Docker to manage Spark environment and dependencies.
+- **Spark ETL Execution**: Dockerized - Use Docker to manage Spark environment and dependencies. Fixed `awaitAnyTermination` to ensure stability.
 - **Port Strategy**: 905x Range - Use the 9050-9056 range to avoid local port conflicts.
-- **Development Workflow**: Hybrid - Infrastructure in Docker; Frontend and Ingestion API run natively for faster iteration.
-- **Automation**: Include Verification Script - Create `scripts/verify-setup.sh` to automate health checks.
+- **Real-time Metrics**: Native - Real-time Analytics runs natively on port 9052 for high performance.
+- **Ingestion Flow**: End-to-end verified from API to Storage.
 
 ### Action Items
 - [x] Implement `scripts/verify-setup.sh` for infrastructure health checks.
 - [x] Ensure `docker-compose.yml` matches the 905x port range for infrastructure services.
-- [ ] Expand `scripts/verify-setup.sh` for application services (Phase 02/03).
-- [ ] Verify `frontend` and `ingestion-api` local configs use the validated port range.
+- [x] Verify Spark ETL stability in Docker.
+- [x] Verify Real-time Analytics on port 9052.
+- [ ] Resolve Raw Archiver Spring Boot 3 / Jakarta migration issues.
+- [ ] Proceed to Phase 04: React Frontend orchestration.

@@ -115,7 +115,8 @@ public class ClickstreamETLJob implements CommandLineRunner {
         logger.info("Page metrics query: {}", pageMetricsQuery.id());
         logger.info("Journey query: {}", journeyQuery.id());
         
-        // Queries run in background; application stays alive
+        // Wait for any query to terminate (keeps application alive)
+        spark.streams().awaitAnyTermination();
     }
     
     /**

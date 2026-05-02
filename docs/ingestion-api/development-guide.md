@@ -14,9 +14,19 @@ Local development setup, testing, debugging, and troubleshooting for the Ingesti
 | **Git** | 2.30+ | Version control |
 | **IDE** | IntelliJ IDEA / VS Code | Code editor (optional) |
 
-## Setup
+## Technical Fixes & Limitations (Phase 03)
 
-### 1. Clone Repository
+### Spark ETL
+- **Fix:** Added `awaitAnyTermination()` to the Spark ETL job. This ensures the job remains running and continues to process micro-batches from Kafka instead of terminating immediately after the first batch.
+
+### MongoDB
+- **Fix:** Implemented logic in `MongoIndexService` to drop conflicting existing indexes before creating new ones. This resolves issues where index definitions were out of sync between code and the database.
+
+### Real-time Analytics
+- **Health Check:** The health check (`GET /api/realtime/health`) will report `UP` only after the first event batch is successfully consumed. If the service is running but no events are streaming, it might appear to be in a degraded state because it cannot verify the consumer's ability to process events.
+
+### Raw Archiver (Known Blocker)
+- **Note:** The Raw Archiver currently has a build issue that blocks deployment. Refer to `raw-archiver/BUILD-ISSUE.md` for details. This is being tracked as a priority issue for the next sprint.
 
 ```bash
 cd ~/workspace

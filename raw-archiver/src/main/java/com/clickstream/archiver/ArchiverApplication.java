@@ -1,7 +1,9 @@
 package com.clickstream.archiver;
 
+import com.clickstream.validation.EventValidator;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.EnableKafka;
 
 /**
@@ -20,5 +22,10 @@ public class ArchiverApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(ArchiverApplication.class, args);
+    }
+
+    @Bean
+    public EventValidator eventValidator() {
+        return new EventValidator();
     }
 }

@@ -3,7 +3,7 @@ title: "Clickstream Analytics Application - Project Roadmap"
 description: "Complete project roadmap tracking all development phases, milestones, and progress"
 status: in-progress
 created: 2026-04-09
-last-updated: 2026-05-01
+last-updated: 2026-05-02
 ---
 
 # Clickstream Analytics Application — Project Roadmap
@@ -12,13 +12,13 @@ last-updated: 2026-05-01
 
 **Project Status:** 🏗️ **IN PROGRESS** (Phase 08: Integration & Orchestration)
 
-End-to-end clickstream analytics system with 7 core implementation phases completed. Currently in Phase 08 focusing on service orchestration, automated startup sequences, and full system integration testing.
+End-to-end clickstream analytics system with core implementation phases completed. Currently in Phase 08 focusing on service orchestration, automated startup sequences, and full system integration testing. Processing layer is now orchestrated.
 
-- **Total Effort:** 46 hours (40 hours core + 6 hours orchestration)
-- **Phases Completed:** 7/8 (87.5%)
+- **Total Effort:** 48 hours (40 hours core + 8 hours orchestration)
+- **Phases Completed:** 7/8 (Core) + 3/4 (Orchestration)
 - **Code Review Score:** 8.5/10 (production-ready)
 - **Architecture:** Fully modular Maven multi-module backend + React 19 Atomic Design frontend
-- **Integration Status:** Infrastructure and core ingestion services orchestrated; processing layer integration in progress
+- **Integration Status:** Infrastructure, Core, and Processing services orchestrated; Frontend integration remaining.
 
 ---
 
@@ -194,16 +194,16 @@ End-to-end clickstream analytics system with 7 core implementation phases comple
 ---
 
 ### Phase 08 — Service Orchestration & Integration 🏗️ IN PROGRESS
-**Target Completion:** 2026-05-02 | **Effort:** 4h
+**Target Completion:** 2026-05-02 | **Effort:** 6h
 
 **Deliverables:**
 - ✅ **Phase 01: Infrastructure Layer** (Kafka, MongoDB, Kafka UI) — **DONE** (2026-05-01)
 - ✅ **Phase 02: Core & Ingestion Services** (Shared Models, Ingestion API) — **DONE** (2026-05-01)
-- [ ] Phase 03: Data Processing & Analytics pipeline orchestration
+- ✅ **Phase 03: Data Processing & Analytics** (Spark ETL, Real-time) — **DONE*** (2026-05-02)
 - [ ] Phase 04: Frontend UI integration & end-to-end validation
 - [ ] Automated verification script (`scripts/verify-setup.sh`)
 
-**Status:** Infrastructure and core services orchestrated. Moving to data processing pipeline initialization.
+**Status:** Processing layer (Spark ETL & Real-time Analytics) orchestrated and verified. Raw Archiver blocked on Jakarta migration. Moving to frontend integration.
 
 ---
 
@@ -217,6 +217,7 @@ End-to-end clickstream analytics system with 7 core implementation phases comple
 | All Core Phases Delivered | 2026-04-18 | 2026-04-18 | ✅ Done |
 | Phase 08: Infrastructure Orchestrated | 2026-05-01 | 2026-05-01 | ✅ Done |
 | Phase 08: Core Services Orchestrated | 2026-05-01 | 2026-05-01 | ✅ Done |
+| Phase 08: Processing Pipeline Orchestrated | 2026-05-02 | 2026-05-02 | ✅ Done |
 | Phase 08: Full Integration Complete | 2026-05-02 | | 🏗️ Pending |
 
 ---
@@ -254,12 +255,11 @@ End-to-end clickstream analytics system with 7 core implementation phases comple
 
 ## Known Issues & Resolutions
 
-### Phase 06 Blocker: Corporate Artifactory HTTP 403
-**Severity:** Medium (Infrastructure issue, not code issue)
-**Impact:** Unit tests cannot run in CI/CD; local development unaffected
-**Resolution:** IT/DevOps to whitelist Maven Central packages or configure mirror bypass
-**Workaround:** Local Maven cache or direct Central access if permitted
-**Timeline:** Resolved externally; code is 100% complete
+### Phase 06/08 Blocker: Spring Boot 3 / Jakarta Migration
+**Severity:** High (Blocks one consumer)
+**Impact:** `raw-archiver` cannot run due to `javax.*` vs `jakarta.*` namespace conflicts in Kafka/Parquet dependencies.
+**Resolution:** Upgrade dependencies to Jakarta-compatible versions or implement custom shim if necessary.
+**Status:** ⚠️ BLOCKED
 
 ### Phase 07 Optimization: Bundle Size (880 KB)
 **Severity:** Low (Performance optimization)
@@ -317,6 +317,7 @@ End-to-end clickstream analytics system with 7 core implementation phases comple
 **Orchestration (Phase 08)**
 - ✅ **Infrastructure Layer** (2026-05-01): Kafka (KRaft), MongoDB, and Kafka UI orchestrated via Docker Compose. Verified connectivity and topic initialization.
 - ✅ **Core Services** (2026-05-01): `shared-models` built and installed; `ingestion-api` orchestrated and health-checked.
+- ✅ **Processing Layer** (2026-05-02): `spark-etl` (stable in Docker) and `realtime-analytics` (native 9052) orchestrated. Ingestion flow verified.
 - 🏗️ **Startup Sequence**: Implementation of ordered service initialization (Shared Models → Ingestion → Consumers).
 
 ### v1.0.0 — Full Project Delivery (2026-04-18)
@@ -345,5 +346,5 @@ End-to-end clickstream analytics system with 7 core implementation phases comple
 
 ---
 
-**Last Update:** 2026-05-01  
+**Last Update:** 2026-05-02  
 **Status:** Phase 08 In Progress

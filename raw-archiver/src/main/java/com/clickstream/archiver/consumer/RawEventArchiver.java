@@ -6,14 +6,9 @@ import com.clickstream.archiver.writer.ParquetEventWriter;
 import com.clickstream.model.ClickEvent;
 import com.clickstream.validation.EventValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.stereotype.Service;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;

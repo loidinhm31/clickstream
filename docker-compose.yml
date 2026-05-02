@@ -183,5 +183,5 @@ volumes:
 networks:
   clickstream-net:
     driver: bridge
-kstream-net:
+  kstream-net:
     driver: bridge
