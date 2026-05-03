@@ -54,6 +54,46 @@ Once started, access:
 | **Kafka UI** | http://localhost:9050 | Kafka topic browser |
 | **MongoDB** | mongodb://localhost:9055/clickstream_db | Database |
 
+## System Startup Flow
+
+To ensure data integrity and service connectivity, follow this "Infrastructure-First" startup sequence. This flow ensures that brokers, databases, and processing jobs are ready before the APIs and Frontend start sending data.
+
+```mermaid
+graph TD
+    subgraph "Phase 1: Foundation (Docker)"
+        A[Kafka Broker] --> B[MongoDB]
+        B --> C[Kafka UI]
+    end
+
+    subgraph "Phase 2: Processing (Docker)"
+        C --> D[Spark ETL]
+    end
+
+    subgraph "Phase 3: Core Services (Spring Boot)"
+        D --> E[Ingestion API]
+        D --> F[Real-time Analytics]
+        D --> G[Raw Archiver]
+    end
+
+    subgraph "Phase 4: Presentation (Vite)"
+        E --> H[React Frontend]
+        F --> H
+    end
+```
+
+### Step-by-Step Orchestration
+
+| Step | Action | Command | Purpose |
+|:-----|:-------|:--------|:--------|
+| **1** | **Prepare** | `make build-all` | Compiles all Java code and installs node modules. |
+| **2** | **Infrastructure** | `make start-infra` | Starts Kafka and MongoDB. Critical for message persistence. |
+| **3** | **Processing** | `make start-spark` | Starts Spark Structured Streaming job to aggregate events. |
+| **4** | **Analytics** | `make start-realtime-analytics` | Initializes the Arrow-based in-memory metrics engine. |
+| **5** | **Ingestion** | `make start-ingestion-api` | Opens the gateway for new clickstream events. |
+| **6** | **Frontend** | `make start-frontend` | Launches the React dashboard. |
+
+> **Pro Tip:** Use `make start-all` to automate steps 2 through 6 in the correct order.
+
 ## Common Commands
 
 ### Start/Stop

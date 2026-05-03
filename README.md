@@ -28,6 +28,35 @@ Apache Kafka (clickstream-events topic, 6 partitions, sessionId key)
 
 ### Quick Start
 
+### System Startup Flow
+
+To ensure data integrity and service connectivity, follow this "Infrastructure-First" startup sequence:
+
+```mermaid
+graph TD
+    subgraph "Phase 1: Foundation (Docker)"
+        A[Kafka Broker] --> B[MongoDB]
+        B --> C[Kafka UI]
+    end
+
+    subgraph "Phase 2: Processing (Docker)"
+        C --> D[Spark ETL]
+    end
+
+    subgraph "Phase 3: Core Services (Spring Boot)"
+        D --> E[Ingestion API]
+        D --> F[Real-time Analytics]
+        D --> G[Raw Archiver]
+    end
+
+    subgraph "Phase 4: Presentation (Vite)"
+        E --> H[React Frontend]
+        F --> H
+    end
+```
+
+📖 **See [QUICKSTART.md](./QUICKSTART.md) for detailed step-by-step orchestration.**
+
 #### Windows (PowerShell)
 
 **Start All Services:**
