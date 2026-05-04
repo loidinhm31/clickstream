@@ -29,7 +29,7 @@ NC := \033[0m # No Color
 INGESTION_API_PORT := 9051
 REALTIME_ANALYTICS_PORT := 9052
 RAW_ARCHIVER_PORT := 9053
-FRONTEND_PORT := 9054
+FRONTEND_PORT := 9059
 KAFKA_UI_PORT := 9050
 MONGODB_PORT := 9055
 KAFKA_PORT := 9056
@@ -319,6 +319,16 @@ test-frontend: ## Run Frontend tests
 	@echo "$(CYAN)Running Frontend tests...$(NC)"
 	cd frontend && npm test
 	@echo "$(GREEN)✓ Frontend tests complete$(NC)"
+
+test-e2e: ## Run E2E Playwright tests (requires all services running via make start-all)
+	@echo "$(CYAN)Running E2E tests (Playwright)...$(NC)"
+	bash scripts/run-e2e.sh
+	@echo "$(GREEN)✓ E2E tests complete$(NC)"
+
+test-e2e-headed: ## Run E2E Playwright tests in headed (visible browser) mode
+	@echo "$(CYAN)Running E2E tests (headed)...$(NC)"
+	bash scripts/run-e2e.sh --headed
+	@echo "$(GREEN)✓ E2E tests complete$(NC)"
 
 ##@ Development Helpers
 
