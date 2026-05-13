@@ -88,6 +88,7 @@ build-frontend: ## Build frontend application
 start-infra: ## Start infrastructure services (Kafka, MongoDB, Kafka-UI, Spark ETL) in Docker
 	@echo "$(CYAN)Starting infrastructure services (Docker)...$(NC)"
 	docker compose up -d kafka mongodb kafka-ui
+	docker compose up kafka-init
 	@echo "$(YELLOW)Waiting for services to be healthy...$(NC)"
 	@sleep 15
 	docker compose ps
@@ -129,7 +130,7 @@ start-realtime-analytics: ## Start Real-time Analytics (Spring Boot)
 	@echo "$(CYAN)Starting Real-time Analytics on port $(REALTIME_ANALYTICS_PORT)...$(NC)"
 	@mkdir -p $(PID_DIR) $(LOG_DIR)
 	@cd realtime-analytics && (mvn spring-boot:run \
-		-Dspring-boot.run.jvmArguments="-Dserver.port=$(REALTIME_ANALYTICS_PORT)" \
+		-Dspring-boot.run.jvmArguments="--add-opens=java.base/java.nio=ALL-UNNAMED -Dserver.port=$(REALTIME_ANALYTICS_PORT)" \
 		> ../$(REALTIME_LOG) 2>&1 & echo $$! > ../$(REALTIME_PID))
 	@echo "$(GREEN)✓ Real-time Analytics started (PID: $$(cat $(REALTIME_PID)))$(NC)"
 	@echo "$(CYAN)  WebSocket: ws://localhost:$(REALTIME_ANALYTICS_PORT)/ws/metrics$(NC)"

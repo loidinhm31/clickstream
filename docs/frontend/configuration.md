@@ -51,7 +51,8 @@ File: `frontend/vite.config.ts`
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
+    port: 9059,
+    open: false,
     proxy: {
       // Proxy /api/* requests to Ingestion API
       '/api': {
@@ -225,10 +226,12 @@ export default [
 npm run dev
 ```
 
-- Vite dev server starts on port 3000
+- Vite dev server starts on port 9059
 - Hot module replacement (HMR) enabled
 - Source maps available for debugging
 - No optimizations (fast reload)
+
+For Docker-network e2e runs, configure the Vite `/api` and `/ws` proxy targets to use Docker service URLs instead of host `localhost` ports.
 
 ### Production Build
 

@@ -60,6 +60,7 @@ class EventTrackingService {
     if (this.buffer.length === 0) return;
 
     const batch = this.buffer.splice(0);
+    console.log(`[EventTrackingService] Flushing ${batch.length} events to ${BATCH_ENDPOINT}`);
 
     // Clear timer
     if (this.flushTimer) {
@@ -67,16 +68,32 @@ class EventTrackingService {
       this.flushTimer = null;
     }
 
-    // Send batch using sendBeacon for reliability
-    // Use Blob to set Content-Type: application/json (plain string defaults to text/plain)
-    const payload = new Blob([JSON.stringify(batch)], { type: 'application/json' });
-    const success = navigator.sendBeacon(
-      `${API_BASE}${BATCH_ENDPOINT}`,
-      payload
-    );
+    fetch(`${API_BASE}${BATCH_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(batch),
+      keepalive: true,
+    }).then((response) => {
+      if (!response.ok) {
+        this.buffer.unshift(...batch);
+      }
+    }).catch((error) => {
+      console.error('Failed to send events:', error);
+      this.buffer.unshift(...batch);
+    });
+  }
 
-    // Fallback to fetch if sendBeacon fails
-    if (!success) {
+  // Flush on page unload
+  flushOnUnload(): void {
+    if (this.buffer.length === 0) return;
+
+    const batch = this.buffer.splice(0);
+    const payload = new Blob([JSON.stringify(batch)], { type: 'application/json' });
+    const sent = navigator.sendBeacon(`${API_BASE}${BATCH_ENDPOINT}`, payload);
+
+    if (!sent) {
       fetch(`${API_BASE}${BATCH_ENDPOINT}`, {
         method: 'POST',
         headers: {
@@ -84,15 +101,15 @@ class EventTrackingService {
         },
         body: JSON.stringify(batch),
         keepalive: true,
+      }).then((response) => {
+        if (!response.ok) {
+          this.buffer.unshift(...batch);
+        }
       }).catch((error) => {
-        console.error('Failed to send events:', error);
+        console.error('Failed to send events on unload:', error);
+        this.buffer.unshift(...batch);
       });
     }
-  }
-
-  // Flush on page unload
-  flushOnUnload(): void {
-    this.flush();
   }
 }
 

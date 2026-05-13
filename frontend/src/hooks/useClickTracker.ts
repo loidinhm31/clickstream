@@ -1,8 +1,9 @@
-import { useCallback, useContext, useMemo } from 'react';
+import { useCallback, useContext, useEffect, useMemo } from 'react';
 import debounce from 'lodash.debounce';
 import { TrackingContext } from '../contexts/TrackingContext';
 import { eventTrackingService } from '../services/eventTrackingService';
 import { EventMetadata, EventType, ClickEvent } from '../types/events';
+import { createUuid } from '../utils/uuid';
 
 export function useClickTracker(componentName: string) {
   const { sessionId, userId } = useContext(TrackingContext);
@@ -15,7 +16,7 @@ export function useClickTracker(componentName: string) {
           ? referrer
           : undefined;
       const event: ClickEvent = {
-        eventId: crypto.randomUUID(),
+        eventId: createUuid(),
         userId,
         sessionId,
         eventType,
@@ -46,6 +47,10 @@ export function useClickTracker(componentName: string) {
     }, 200),
     [trackEvent]
   );
+
+  useEffect(() => () => {
+    debouncedTrackClick.cancel();
+  }, [debouncedTrackClick]);
 
   const trackClick = useCallback(
     (targetElement: string, metadata?: EventMetadata, mouseEvent?: MouseEvent) => {

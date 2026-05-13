@@ -3,7 +3,7 @@ title: "Clickstream Analytics Application - Project Roadmap"
 description: "Complete project roadmap tracking all development phases, milestones, and progress"
 status: completed
 created: 2026-04-09
-last-updated: 2026-05-02
+last-updated: 2026-05-13
 ---
 
 # Clickstream Analytics Application — Project Roadmap
@@ -219,6 +219,7 @@ End-to-end clickstream analytics system with all implementation phases, service 
 | Phase 08: Core Services Orchestrated | 2026-05-01 | 2026-05-01 | ✅ Done |
 | Phase 08: Processing Pipeline Orchestrated | 2026-05-02 | 2026-05-02 | ✅ Done |
 | Phase 08: Full Integration Complete | 2026-05-02 | 2026-05-02 | ✅ Done |
+| E2E Live Stack Validation | 2026-05-13 | 2026-05-13 | ✅ Done |
 
 ---
 
@@ -321,6 +322,15 @@ End-to-end clickstream analytics system with all implementation phases, service 
 - ✅ **Frontend Integration** (2026-05-02): React frontend orchestrated and integrated with Ingestion API and Real-time Analytics. Verified WebSocket data flow.
 - ✅ **Startup Sequence**: Implementation of ordered service initialization and health verification script.
 
+### v1.1.1 — E2E Live Stack Validation (2026-05-13)
+
+**E2E hardening**
+- ✅ Validated the Playwright standard user journey against the live Docker stack.
+- ✅ Confirmed Ingestion API, Realtime Analytics, Raw Archiver, and Spark ETL health during the run.
+- ✅ Added Kafka topic initialization to the infrastructure startup path.
+- ✅ Hardened frontend dev proxy configuration for containerized e2e execution.
+- ✅ Fixed frontend event/session/journey handling to match the live analytics schemas.
+
 ### v1.0.0 — Full Project Delivery (2026-04-18)
 
 **Backend Services (6 phases + shared models)**
@@ -347,5 +357,5 @@ End-to-end clickstream analytics system with all implementation phases, service 
 
 ---
 
-**Last Update:** 2026-05-02  
+**Last Update:** 2026-05-13  
 **Status:** Completed

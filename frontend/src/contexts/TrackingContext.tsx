@@ -1,4 +1,5 @@
 import { createContext, useEffect, useState, useMemo, ReactNode } from 'react';
+import { createUuid } from '../utils/uuid';
 
 interface TrackingContextValue {
   sessionId: string;
@@ -16,8 +17,23 @@ interface TrackingProviderProps {
 }
 
 const generateSessionId = (): string => {
-  // UUID v4 generation
-  return crypto.randomUUID();
+  return createUuid();
+};
+
+const getSessionValue = (key: string): string | null => {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const setSessionValue = (key: string, value: string): void => {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    // Tracking must not block app boot when storage is restricted.
+  }
 };
 
 const getOrCreateSessionId = (): string => {
@@ -25,8 +41,8 @@ const getOrCreateSessionId = (): string => {
   const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
   const TIMESTAMP_KEY = 'clickstream_session_timestamp';
 
-  const storedSessionId = sessionStorage.getItem(SESSION_KEY);
-  const storedTimestamp = sessionStorage.getItem(TIMESTAMP_KEY);
+  const storedSessionId = getSessionValue(SESSION_KEY);
+  const storedTimestamp = getSessionValue(TIMESTAMP_KEY);
 
   const now = Date.now();
 
@@ -35,15 +51,15 @@ const getOrCreateSessionId = (): string => {
     const timestamp = parseInt(storedTimestamp, 10);
     if (now - timestamp < SESSION_DURATION) {
       // Update timestamp to extend session
-      sessionStorage.setItem(TIMESTAMP_KEY, now.toString());
+      setSessionValue(TIMESTAMP_KEY, now.toString());
       return storedSessionId;
     }
   }
 
   // Create new session
   const newSessionId = generateSessionId();
-  sessionStorage.setItem(SESSION_KEY, newSessionId);
-  sessionStorage.setItem(TIMESTAMP_KEY, now.toString());
+  setSessionValue(SESSION_KEY, newSessionId);
+  setSessionValue(TIMESTAMP_KEY, now.toString());
 
   return newSessionId;
 };
@@ -54,7 +70,7 @@ export function TrackingProvider({ children, userId = 'anonymous' }: TrackingPro
   // Update session timestamp on activity
   useEffect(() => {
     const updateTimestamp = () => {
-      sessionStorage.setItem('clickstream_session_timestamp', Date.now().toString());
+      setSessionValue('clickstream_session_timestamp', Date.now().toString());
     };
 
     // Update on user activity

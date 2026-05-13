@@ -42,12 +42,12 @@ export function SessionTable() {
       </div>
 
       <div className="session-table-body">
-        {data?.sessions.map((session) => (
+        {data?.sessions.map((session, index) => (
           <SessionRow
-            key={session.sessionId}
+            key={`${session.sessionId}-${session.windowStart}-${index}`}
             session={session}
-            onClick={() =>
-              trackClick('session_row')
+            onClick={(event) =>
+              trackClick('session_row', undefined, event.nativeEvent)
             }
           />
         ))}

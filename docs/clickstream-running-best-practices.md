@@ -16,11 +16,13 @@ The stack should be initialized in a "Bottom-Up" sequence, ensuring data sinks a
 2.  **Phase 2: Topic & Schema Setup**
     - **Components**: Topic initialization scripts, Schema Registry.
     - **Reasoning**: Consumers and Producers will fail if topics don't exist or schemas are undefined.
+    - **Local command**: `make start-infra` runs `docker compose up kafka-init` after the broker is available so `clickstream-events` exists before producers and consumers start.
 
 3.  **Phase 3: Sinks & Processing (Consumers)**
     - **Components**: Spark ETL, Real-time Analytics, Raw Archiver.
     - **Reasoning**: Starting consumers before producers prevents data build-up in Kafka and allows verification of the pipeline from the "end" first.
     - **Constraint**: Must wait for Phase 1 & 2 to be healthy.
+    - **JDK compatibility**: The Real-time Analytics service uses Apache Arrow and needs `--add-opens=java.base/java.nio=ALL-UNNAMED` on modern JDKs.
 
 4.  **Phase 4: Ingestion API (Producers)**
     - **Components**: Spring Boot Ingestion API.
@@ -30,6 +32,7 @@ The stack should be initialized in a "Bottom-Up" sequence, ensuring data sinks a
 5.  **Phase 5: Presentation (Frontend)**
     - **Components**: React Application (Vite/Webpack).
     - **Reasoning**: The frontend depends on the Ingestion API for event tracking and the Analytics API for displaying data.
+    - **E2E default**: Vite runs on port `9059`; configure proxy targets for Docker service URLs when the browser runs inside the Docker network.
 
 ---
 

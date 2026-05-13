@@ -40,8 +40,8 @@ export function JourneysPage() {
               <div
                 key={journey.sessionId}
                 className="journey-card"
-                onClick={() =>
-                  trackClick('journey_expand')
+                onClick={(event) =>
+                  trackClick('journey_expand', undefined, event.nativeEvent)
                 }
               >
                 <div className="journey-header">
@@ -50,29 +50,21 @@ export function JourneysPage() {
                       {journey.sessionId.substring(0, 8)}...
                     </span>
                     <Badge variant="default">
-                      {journey.totalEvents} events
+                      {journey.orderedPages.length} pages
                     </Badge>
                   </div>
                   <span className="journey-user">{journey.userId}</span>
                 </div>
 
                 <div className="journey-events">
-                  {journey.eventSequence.map((event) => (
-                    <div key={event.sequenceNum} className="journey-event">
-                      <span className="event-num">{event.sequenceNum}</span>
-                      <Badge
-                        variant={
-                          event.eventType === 'PAGE_VIEW'
-                            ? 'success'
-                            : 'default'
-                        }
-                      >
-                        {event.eventType}
-                      </Badge>
+                  {journey.orderedPages.map((page, index) => (
+                    <div key={`${page.pageUrl}-${page.timestamp}`} className="journey-event">
+                      <span className="event-num">{index + 1}</span>
+                      <Badge variant="success">PAGE_VIEW</Badge>
                       <span className="event-target">
-                        {event.targetElement}
+                        {page.clicksOnPage} clicks
                       </span>
-                      <span className="event-page">{event.pageUrl}</span>
+                      <span className="event-page">{page.pageUrl}</span>
                     </div>
                   ))}
                 </div>
