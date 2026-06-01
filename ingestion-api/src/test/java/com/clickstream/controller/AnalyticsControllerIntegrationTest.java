@@ -21,7 +21,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -116,7 +115,7 @@ class AnalyticsControllerIntegrationTest {
         mockMvc.perform(get("/api/analytics/sessions/" + session.getId()))
                 // Then - returns session
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("session-999"))
+                .andExpect(jsonPath("$.sessionId").value("session-999"))
                 .andExpect(jsonPath("$.userId").value("user-test"));
     }
 
@@ -192,7 +191,7 @@ class AnalyticsControllerIntegrationTest {
         UserJourney journey = createJourney("user-charlie", "session-555");
         journeyRepository.save(journey);
 
-        // When - GET /api/analytics/journeys/{userId}
+        // When - GET /api/analytics/journeys/user-charlie
         mockMvc.perform(get("/api/analytics/journeys/user-charlie"))
                 // Then - returns journeys
                 .andExpect(status().isOk())
@@ -208,7 +207,7 @@ class AnalyticsControllerIntegrationTest {
         UserJourney journey = createJourney("user-delta", "session-777");
         journeyRepository.save(journey);
 
-        // When - GET /api/analytics/journeys/session/{sessionId}
+        // When - GET /api/analytics/journeys/session/session-777
         mockMvc.perform(get("/api/analytics/journeys/session/session-777"))
                 // Then - returns journey
                 .andExpect(status().isOk())
@@ -239,60 +238,54 @@ class AnalyticsControllerIntegrationTest {
 
     // Helper methods
 
-    private SessionAggregate createSession(String sessionId, String userId, Instant startTime) {
-        return new SessionAggregate(
-                sessionId,
-                userId,
-                startTime,
-                startTime.plusSeconds(600), // 10 min session
-                600000L,
-                15,
-                5,
-                3,
-                4,
-                3,
-                "/home",
-                "/checkout",
-                4,
-                Map.of("/home", 1, "/products", 2, "/cart", 1, "/checkout", 1),
-                "Mozilla/5.0",
-                "192.168.1.1"
-        );
+    private SessionAggregate createSession(String sessionId, String userId, Instant windowStart) {
+        SessionAggregate session = new SessionAggregate();
+        session.setId(sessionId + "_" + windowStart.toEpochMilli());
+        session.setSessionId(sessionId);
+        session.setUserId(userId);
+        session.setWindowStart(windowStart.toString());
+        session.setWindowEnd(windowStart.plusSeconds(600).toString());
+        session.setDurationMs(600000L);
+        session.setPageViewCount(3);
+        session.setClickCount(5);
+        session.setScrollEvents(4);
+        session.setUniquePages(Arrays.asList("/home", "/products", "/cart", "/checkout"));
+        session.setEntryPage("/home");
+        session.setExitPage("/checkout");
+        session.setBounced(false);
+        return session;
     }
 
     private PageMetric createPageMetric(String pageUrl, Instant windowStart, int totalViews) {
-        return new PageMetric(
-                pageUrl + ":" + windowStart.toEpochMilli(),
-                pageUrl,
-                windowStart,
-                windowStart.plusSeconds(3600),
-                totalViews,
-                totalViews / 2,
-                totalViews * 3,
-                totalViews / 5,
-                totalViews / 10,
-                5000L,
-                totalViews / 10,
-                0.1
-        );
+        PageMetric metric = new PageMetric();
+        metric.setId(pageUrl + ":" + windowStart.toEpochMilli());
+        metric.setPageUrl(pageUrl);
+        metric.setWindowStart(windowStart.toString());
+        metric.setWindowEnd(windowStart.plusSeconds(3600).toString());
+        metric.setTotalViews((long) totalViews);
+        metric.setUniqueVisitors((long) (totalViews / 2));
+        metric.setClickCount((long) (totalViews * 3));
+        metric.setAvgScrollDepth(0.75);
+        metric.setBounceRate(0.1);
+        return metric;
     }
 
     private UserJourney createJourney(String userId, String sessionId) {
-        List<UserJourney.PageVisit> sequence = Arrays.asList(
-                new UserJourney.PageVisit("/home", Instant.now().minusSeconds(300), 60000L, 5),
-                new UserJourney.PageVisit("/products", Instant.now().minusSeconds(240), 120000L, 8),
-                new UserJourney.PageVisit("/checkout", Instant.now().minusSeconds(120), 180000L, 12)
-        );
-
-        return new UserJourney(
-                userId + ":" + sessionId,
-                userId,
-                sessionId,
-                Instant.now().minusSeconds(300),
-                Instant.now(),
-                sequence,
-                360000L,
-                3
-        );
+        UserJourney journey = new UserJourney();
+        journey.setId(userId + ":" + sessionId);
+        journey.setUserId(userId);
+        journey.setSessionId(sessionId);
+        journey.setWindowStart(Instant.now().minusSeconds(300).toString());
+        journey.setWindowEnd(Instant.now().toString());
+        
+        UserJourney.OrderedPage page1 = new UserJourney.OrderedPage();
+        page1.setPageUrl("/home");
+        page1.setTimestamp(Instant.now().minusSeconds(300).toEpochMilli());
+        page1.setClicksOnPage(5);
+        
+        journey.setOrderedPages(Arrays.asList(page1));
+        journey.setTotalSessionDuration(360000L);
+        
+        return journey;
     }
 }

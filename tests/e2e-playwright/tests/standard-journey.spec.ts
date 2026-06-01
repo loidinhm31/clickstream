@@ -82,15 +82,24 @@ test.describe('Standard User Journey', () => {
     // 5.5 Force session close in Spark ETL
     console.log('Waiting for session gap (10s) and sending final events to close session...');
     await page.waitForTimeout(15000); // 15s > 10s gap
-    
-    // Send multiple clicks to ensure a batch is triggered immediately (limit is 10)
-    for (let i = 0; i < 11; i++) {
-      await page.click('body');
-      await page.waitForTimeout(100);
-    }
-    
-    // Wait for the batch request to complete
-    await page.waitForResponse(res => res.url().includes('/api/events/batch'), { timeout: 15000 });
+
+    // Navigate between pages to generate tracked PAGE_VIEW events (each nav = 1 event).
+    // Use Promise.all so waitForResponse is listening before the actions fire.
+    const [finalResponse] = await Promise.all([
+      page.waitForResponse(res => res.url().includes('/api/events/batch'), { timeout: 20000 }),
+      (async () => {
+        // Navigate back and forth to accumulate 10+ PAGE_VIEW events (batch threshold)
+        for (let i = 0; i < 6; i++) {
+          const sessionsLink = page.getByRole('link', { name: /Sessions/i });
+          if (await sessionsLink.isVisible()) await sessionsLink.click();
+          await page.waitForTimeout(300);
+          const dashLink = page.getByRole('link', { name: /Dashboard/i });
+          if (await dashLink.isVisible()) await dashLink.click();
+          await page.waitForTimeout(300);
+        }
+      })(),
+    ]);
+    expect(finalResponse.status()).toBe(202);
     console.log('Final events flushed to force session aggregation');
     
     // Give Spark ETL a few seconds to process the closing event
