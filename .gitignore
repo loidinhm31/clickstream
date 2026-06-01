@@ -87,3 +87,9 @@ logs/
 
 # Data lake (exclude large Parquet files)
 data-lake/
+
+# Generated local tool artifacts
+.claude/
+.vite/
+playwright-report/
+test-results/

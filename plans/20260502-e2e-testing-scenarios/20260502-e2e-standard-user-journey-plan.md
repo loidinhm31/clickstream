@@ -124,3 +124,14 @@ This plan details the implementation of a comprehensive End-to-End (E2E) testing
 ### Remaining Low-priority Items
 - `getStats()` return type is `any` — could be typed against actual API shape (cosmetic)
 - `waitForActiveSessions` / `waitForUserJourney` removal not verified via grep; assumed complete per review report
+
+### Live Execution Status (2026-05-04)
+
+Tests have **not been run against a live stack**. TypeScript compilation passes (`tsc --noEmit`). A post-implementation service audit found three issues blocking a successful test run. See the fix plan:
+
+**→ `20260504-e2e-fix-live-stack.md`**
+
+Summary of blockers:
+1. **CRITICAL** — Raw Archiver (port 9053) not running; zero parquet files written. Parquet step will time out.
+2. **MEDIUM** — Realtime Analytics Kafka consumer reports DOWN. WebSocket session count assertion may still pass independently; Kafka processing degraded.
+3. **LOW** — Spark ETL Docker healthcheck times out (container "unhealthy" but functionally writing to MongoDB).

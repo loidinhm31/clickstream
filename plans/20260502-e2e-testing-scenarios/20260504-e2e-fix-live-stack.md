@@ -223,6 +223,7 @@ The live-stack E2E flow was verified in Docker because the host environment did 
 - Realtime Analytics health endpoint returned `UP` with Kafka `UP`.
 - Raw Archiver health endpoint returned `UP`.
 - Spark ETL container reported `healthy`.
+- Follow-up verification found raw-archiver health could become `DOWN` after idle partial batches because time-based flushing only ran when a new Kafka record arrived. Added scheduled flushing and snapshot-safe buffer removal, rebuilt raw-archiver, restarted it, and reran the Playwright live-stack test successfully.
 
 **Implemented fixes:**
 - `make start-infra` now runs Kafka topic initialization before services depend on Kafka.
@@ -230,3 +231,4 @@ The live-stack E2E flow was verified in Docker because the host environment did 
 - Vite dev server uses e2e-compatible port/proxy defaults and configurable proxy targets.
 - Frontend event tracking now avoids brittle browser API assumptions, flushes observable event batches during tests, and preserves unload delivery behavior.
 - Sessions and journeys pages now render the current analytics schemas used by the ingestion and aggregation services.
+- Raw Archiver now has a scheduled time-interval flush path so low-volume tail batches are persisted without requiring another incoming Kafka event.
