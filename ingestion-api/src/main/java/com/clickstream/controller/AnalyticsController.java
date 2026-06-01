@@ -54,11 +54,11 @@ public class AnalyticsController {
      */
     @GetMapping("/sessions")
     public ResponseEntity<Page<SessionAggregate>> getSessions(
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @RequestParam(required = false) String userId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endTime) {
+            @RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+            @RequestParam(value = "size", defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(value = "userId", required = false) String userId,
+            @RequestParam(value = "startTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
+            @RequestParam(value = "endTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endTime) {
         
         logger.debug("GET /sessions: page={}, size={}, userId={}, startTime={}, endTime={}", 
                 page, size, userId, startTime, endTime);
@@ -82,7 +82,7 @@ public class AnalyticsController {
      * Get session by ID
      */
     @GetMapping("/sessions/{sessionId}")
-    public ResponseEntity<SessionAggregate> getSessionById(@PathVariable String sessionId) {
+    public ResponseEntity<SessionAggregate> getSessionById(@PathVariable(value = "sessionId") String sessionId) {
         logger.debug("GET /sessions/{}", sessionId);
         Optional<SessionAggregate> session = analyticsService.getSessionById(sessionId);
         return session.map(ResponseEntity::ok)
@@ -94,7 +94,7 @@ public class AnalyticsController {
      */
     @GetMapping("/sessions/count")
     public ResponseEntity<CountResponse> getSessionCount(
-            @RequestParam(required = false) String userId) {
+            @RequestParam(value = "userId", required = false) String userId) {
         long count = userId != null 
                 ? analyticsService.getSessionCountByUser(userId)
                 : analyticsService.getTotalSessionCount();
@@ -114,11 +114,11 @@ public class AnalyticsController {
      */
     @GetMapping("/pages")
     public ResponseEntity<Page<PageMetric>> getPageMetrics(
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @RequestParam(required = false) String pageUrl,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endTime) {
+            @RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+            @RequestParam(value = "size", defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(value = "pageUrl", required = false) String pageUrl,
+            @RequestParam(value = "startTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
+            @RequestParam(value = "endTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endTime) {
         
         logger.debug("GET /pages: page={}, size={}, pageUrl={}, startTime={}, endTime={}", 
                 page, size, pageUrl, startTime, endTime);
@@ -143,9 +143,9 @@ public class AnalyticsController {
      */
     @GetMapping("/pages/top")
     public ResponseEntity<List<PageMetric>> getTopPages(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endTime,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit) {
+            @RequestParam(value = "startTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
+            @RequestParam(value = "endTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endTime,
+            @RequestParam(value = "limit", defaultValue = "10") @Min(1) @Max(100) int limit) {
         
         // Default to last 24 hours if no time range specified
         if (startTime == null) {
@@ -166,7 +166,7 @@ public class AnalyticsController {
      * Get user journeys
      */
     @GetMapping("/journeys/{userId}")
-    public ResponseEntity<List<UserJourney>> getUserJourneys(@PathVariable String userId) {
+    public ResponseEntity<List<UserJourney>> getUserJourneys(@PathVariable(value = "userId") String userId) {
         logger.debug("GET /journeys/{}", userId);
         List<UserJourney> journeys = analyticsService.getUserJourneys(userId);
         return ResponseEntity.ok(journeys);
@@ -176,7 +176,7 @@ public class AnalyticsController {
      * Get journey by session ID
      */
     @GetMapping("/journeys/session/{sessionId}")
-    public ResponseEntity<UserJourney> getJourneyBySession(@PathVariable String sessionId) {
+    public ResponseEntity<UserJourney> getJourneyBySession(@PathVariable(value = "sessionId") String sessionId) {
         logger.debug("GET /journeys/session/{}", sessionId);
         Optional<UserJourney> journey = analyticsService.getJourneyBySession(sessionId);
         return journey.map(ResponseEntity::ok)

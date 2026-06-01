@@ -49,7 +49,7 @@ public class AnalyticsService {
      */
     public Page<SessionAggregate> getAllSessions(int page, int size) {
         logger.debug("Fetching all sessions: page={}, size={}", page, size);
-        Pageable pageable = PageRequest.of(page, size, Sort.by("startTime").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("windowStart").descending());
         return sessionRepository.findAll(pageable);
     }
 
@@ -58,7 +58,7 @@ public class AnalyticsService {
      */
     public Page<SessionAggregate> getSessionsByUser(String userId, int page, int size) {
         logger.debug("Fetching sessions for user: userId={}, page={}, size={}", userId, page, size);
-        Pageable pageable = PageRequest.of(page, size, Sort.by("startTime").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("windowStart").descending());
         return sessionRepository.findByUserId(userId, pageable);
     }
 
@@ -68,7 +68,7 @@ public class AnalyticsService {
     public Page<SessionAggregate> getSessionsByTimeRange(
             Instant startTime, Instant endTime, int page, int size) {
         logger.debug("Fetching sessions in time range: {} to {}", startTime, endTime);
-        Pageable pageable = PageRequest.of(page, size, Sort.by("startTime").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("windowStart").descending());
         return sessionRepository.findByTimeRange(startTime, endTime, pageable);
     }
 
@@ -79,7 +79,7 @@ public class AnalyticsService {
             String userId, Instant startTime, Instant endTime, int page, int size) {
         logger.debug("Fetching sessions for user in time range: userId={}, {} to {}", 
                 userId, startTime, endTime);
-        Pageable pageable = PageRequest.of(page, size, Sort.by("startTime").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("windowStart").descending());
         return sessionRepository.findByUserIdAndTimeRange(userId, startTime, endTime, pageable);
     }
 
@@ -148,7 +148,7 @@ public class AnalyticsService {
      */
     public List<UserJourney> getUserJourneys(String userId) {
         logger.debug("Fetching journeys for user: {}", userId);
-        return journeyRepository.findByUserIdOrderByStartTimeDesc(userId);
+        return journeyRepository.findByUserIdOrderByWindowStartDesc(userId);
     }
 
     /**

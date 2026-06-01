@@ -15,10 +15,10 @@ export function PageViewRow({ metric }: PageViewRowProps) {
         {metric.totalViews.toLocaleString()}
       </div>
       <div className="page-col page-users">
-        {metric.uniqueUsers.toLocaleString()}
+        {metric.uniqueVisitors.toLocaleString()}
       </div>
       <div className="page-col page-time">
-        {Math.floor(metric.avgTimeOnPage / 1000)}s
+        {metric.clickCount} clicks
       </div>
       <div className="page-col page-bounce">
         {(metric.bounceRate * 100).toFixed(1)}%

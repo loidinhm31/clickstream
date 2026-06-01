@@ -6,9 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -30,12 +30,12 @@ import java.util.List;
 public class EventConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(EventConsumer.class);
-    private static final long HEALTH_CHECK_THRESHOLD_MS = 300_000; // 5 minutes
 
     @Autowired
     private MetricsEngine metricsEngine;
 
-    private volatile Instant lastSuccessfulConsume = Instant.now();
+    @Autowired
+    private KafkaListenerEndpointRegistry listenerRegistry;
 
     /**
      * Consume clickstream events and feed to MetricsEngine.
@@ -58,7 +58,6 @@ public class EventConsumer {
         try {
             logger.info("Received batch: {} events", events.size());
             metricsEngine.ingestBatch(events);
-            lastSuccessfulConsume = Instant.now();
             logger.debug("Successfully ingested {} events into MetricsEngine", events.size());
         } catch (Exception e) {
             logger.error("Failed to process event batch: {} events", events.size(), e);
@@ -67,12 +66,12 @@ public class EventConsumer {
     }
 
     /**
-     * Check if Kafka consumer is healthy (has received events recently).
-     * 
-     * @return true if consumer has processed events within last 5 minutes
+     * Check if Kafka consumer is healthy (listener container is running).
+     *
+     * @return true if at least one listener container is running and not paused
      */
     public boolean isHealthy() {
-        long timeSinceLastConsume = Instant.now().toEpochMilli() - lastSuccessfulConsume.toEpochMilli();
-        return timeSinceLastConsume < HEALTH_CHECK_THRESHOLD_MS;
+        return listenerRegistry.getListenerContainers().stream()
+                .anyMatch(c -> c.isRunning() && !c.isPauseRequested());
     }
 }

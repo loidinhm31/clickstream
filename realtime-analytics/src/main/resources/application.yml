@@ -35,7 +35,7 @@ metrics:
     event-rate-seconds: 60         # 1 minute
   websocket:
     push-interval-ms: 1500  # Push every 1.5 seconds
-    allowed-origins: "http://localhost:9054"
+    allowed-origins: "http://localhost:9059"
 
 # Logging
 logging:

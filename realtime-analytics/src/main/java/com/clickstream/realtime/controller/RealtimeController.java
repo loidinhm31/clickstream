@@ -87,11 +87,9 @@ public class RealtimeController {
         Map<String, Object> stats = metricsEngine.getStats();
         long batchCount = (Long) stats.get("batchCount");
         
-        // Service is degraded if Kafka consumer is down OR no events in last 5 min
-        boolean isHealthy = kafkaHealthy && batchCount > 0;
-        String status = isHealthy ? "UP" : (kafkaHealthy ? "DEGRADED" : "DOWN");
-        
-        return ResponseEntity.status(isHealthy ? 200 : 503).body(Map.of(
+        String status = kafkaHealthy ? "UP" : "DOWN";
+
+        return ResponseEntity.status(kafkaHealthy ? 200 : 503).body(Map.of(
                 "status", status,
                 "service", "realtime-analytics",
                 "kafka", kafkaHealthy ? "UP" : "DOWN",

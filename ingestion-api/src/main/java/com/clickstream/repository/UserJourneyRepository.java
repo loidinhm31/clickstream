@@ -28,5 +28,5 @@ public interface UserJourneyRepository extends MongoRepository<UserJourney, Stri
     /**
      * Find journeys by userId ordered by start time
      */
-    List<UserJourney> findByUserIdOrderByStartTimeDesc(String userId);
+    List<UserJourney> findByUserIdOrderByWindowStartDesc(String userId);
 }

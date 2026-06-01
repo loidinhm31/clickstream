@@ -1,45 +1,45 @@
 // Type definitions for analytics data from MongoDB
+// Aligned with Spark ETL output schema (Phase 4)
 
 export interface SessionAggregate {
   readonly sessionId: string;
   readonly userId: string;
-  readonly windowStart: number;
-  readonly windowEnd: number;
-  readonly totalClicks: number;
-  readonly totalPageViews: number;
-  readonly totalScrolls: number;
-  readonly totalHovers: number;
-  readonly uniquePages: number;
-  readonly avgEventRate: number;
-  readonly firstEventTime: number;
-  readonly lastEventTime: number;
+  readonly windowStart: string; // ISO-8601 from Spring
+  readonly windowEnd: string;
+  readonly durationMs: number;
+  readonly pageViewCount: number;
+  readonly clickCount: number;
+  readonly scrollEvents: number;
+  readonly uniquePages: string[];
+  readonly entryPage: string;
+  readonly exitPage: string;
+  readonly bounced: boolean;
 }
 
 export interface PageMetric {
   readonly pageUrl: string;
+  readonly windowStart: string;
+  readonly windowEnd: string;
   readonly totalViews: number;
-  readonly uniqueUsers: number;
-  readonly avgTimeOnPage: number;
+  readonly uniqueVisitors: number;
+  readonly clickCount: number;
+  readonly avgScrollDepth: number;
   readonly bounceRate: number;
-  readonly windowStart: number;
-  readonly windowEnd: number;
 }
 
 export interface UserJourney {
-  readonly sessionId: string;
   readonly userId: string;
-  readonly eventSequence: JourneyEvent[];
-  readonly startTime: number;
-  readonly endTime: number;
-  readonly totalEvents: number;
+  readonly sessionId: string;
+  readonly windowStart: string;
+  readonly windowEnd: string;
+  readonly orderedPages: OrderedPage[];
+  readonly totalSessionDuration: number;
 }
 
-export interface JourneyEvent {
-  readonly eventType: string;
-  readonly targetElement: string;
+export interface OrderedPage {
   readonly pageUrl: string;
   readonly timestamp: number;
-  readonly sequenceNum: number;
+  readonly clicksOnPage: number;
 }
 
 export interface FilterParams {

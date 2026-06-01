@@ -14,10 +14,22 @@ export function usePageMetrics(
 ): UseQueryResult<PageMetricsResponse> {
   return useQuery({
     queryKey: ['pageMetrics', filters],
-    queryFn: () =>
-      apiClient.get<PageMetricsResponse>('/api/analytics/pages', {
-        params: filters,
-      }),
+    queryFn: async () => {
+      const response = await apiClient.get<any>('/api/analytics/pages', {
+        params: {
+          ...filters,
+          page: (filters.page || 1) - 1, // Spring uses 0-indexed pages
+          size: filters.limit || 20,
+        },
+      });
+      
+      return {
+        metrics: response.content || [],
+        total: response.totalElements || 0,
+        page: (response.number || 0) + 1,
+        limit: response.size || 20,
+      };
+    },
     staleTime: 30000,
     retry: 2,
   });

@@ -51,7 +51,7 @@ public class EventController {
      */
     @PostMapping
     public ResponseEntity<IngestionResponse> ingest(@Valid @RequestBody ClickEvent event) {
-        logger.debug("Received single event: type={}, sessionId={}", 
+        logger.info("Received single event: type={}, sessionId={}", 
                 event.getEventType(), event.getSessionId());
         
         // Additional business validation beyond @Valid annotations

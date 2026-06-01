@@ -26,7 +26,7 @@ public interface SessionAggregateRepository extends MongoRepository<SessionAggre
     /**
      * Find sessions by userId within time range
      */
-    @Query("{ 'userId': ?0, 'startTime': { $gte: ?1, $lte: ?2 } }")
+    @Query("{ 'userId': ?0, 'windowStart': { $gte: ?1, $lte: ?2 } }")
     Page<SessionAggregate> findByUserIdAndTimeRange(
             String userId, 
             Instant startTime, 
@@ -36,7 +36,7 @@ public interface SessionAggregateRepository extends MongoRepository<SessionAggre
     /**
      * Find sessions within time range (all users)
      */
-    @Query("{ 'startTime': { $gte: ?0, $lte: ?1 } }")
+    @Query("{ 'windowStart': { $gte: ?0, $lte: ?1 } }")
     Page<SessionAggregate> findByTimeRange(
             Instant startTime, 
             Instant endTime, 

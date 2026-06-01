@@ -4,24 +4,18 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.index.Indexed;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
  * MongoDB document representing a user's journey map.
  * 
- * Captures the sequence of pages visited during a session,
- * useful for funnel analysis and path optimization.
- * 
- * Indexes:
- * - Index on userId for user-specific journey queries
- * - Index on sessionId for session-specific journey lookup
+ * Matches the schema produced by Spark ETL (Phase 4).
  */
 @Document(collection = "user_journeys")
 public class UserJourney {
     
     @Id
-    private String id;  // userId:sessionId
+    private String id;  // composite key: userId_sessionId
     
     @Indexed
     private String userId;
@@ -29,34 +23,18 @@ public class UserJourney {
     @Indexed
     private String sessionId;
     
-    private Instant startTime;
-    
-    private Instant endTime;
+    private String windowStart;
+
+    private String windowEnd;
     
     // Ordered list of page visits
-    private List<PageVisit> pageSequence;
+    private List<OrderedPage> orderedPages;
     
     // Total journey duration
-    private Long totalDurationMs;
-    
-    // Number of pages in journey
-    private Integer pageCount;
+    private Long totalSessionDuration;
 
     // Constructors
     public UserJourney() {}
-
-    public UserJourney(String id, String userId, String sessionId, Instant startTime,
-                       Instant endTime, List<PageVisit> pageSequence, Long totalDurationMs,
-                       Integer pageCount) {
-        this.id = id;
-        this.userId = userId;
-        this.sessionId = sessionId;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.pageSequence = pageSequence;
-        this.totalDurationMs = totalDurationMs;
-        this.pageCount = pageCount;
-    }
 
     // Getters and Setters
     public String getId() { return id; }
@@ -68,49 +46,35 @@ public class UserJourney {
     public String getSessionId() { return sessionId; }
     public void setSessionId(String sessionId) { this.sessionId = sessionId; }
 
-    public Instant getStartTime() { return startTime; }
-    public void setStartTime(Instant startTime) { this.startTime = startTime; }
+    public String getWindowStart() { return windowStart; }
+    public void setWindowStart(String windowStart) { this.windowStart = windowStart; }
 
-    public Instant getEndTime() { return endTime; }
-    public void setEndTime(Instant endTime) { this.endTime = endTime; }
+    public String getWindowEnd() { return windowEnd; }
+    public void setWindowEnd(String windowEnd) { this.windowEnd = windowEnd; }
 
-    public List<PageVisit> getPageSequence() { return pageSequence; }
-    public void setPageSequence(List<PageVisit> pageSequence) { this.pageSequence = pageSequence; }
+    public List<OrderedPage> getOrderedPages() { return orderedPages; }
+    public void setOrderedPages(List<OrderedPage> orderedPages) { this.orderedPages = orderedPages; }
 
-    public Long getTotalDurationMs() { return totalDurationMs; }
-    public void setTotalDurationMs(Long totalDurationMs) { this.totalDurationMs = totalDurationMs; }
-
-    public Integer getPageCount() { return pageCount; }
-    public void setPageCount(Integer pageCount) { this.pageCount = pageCount; }
+    public Long getTotalSessionDuration() { return totalSessionDuration; }
+    public void setTotalSessionDuration(Long totalSessionDuration) { this.totalSessionDuration = totalSessionDuration; }
 
     /**
      * Represents a single page visit within a journey
      */
-    public static class PageVisit {
+    public static class OrderedPage {
         private String pageUrl;
-        private Instant timestamp;
-        private Long durationMs;
-        private Integer eventCount;
+        private Long timestamp;
+        private Integer clicksOnPage;
 
-        public PageVisit() {}
-
-        public PageVisit(String pageUrl, Instant timestamp, Long durationMs, Integer eventCount) {
-            this.pageUrl = pageUrl;
-            this.timestamp = timestamp;
-            this.durationMs = durationMs;
-            this.eventCount = eventCount;
-        }
+        public OrderedPage() {}
 
         public String getPageUrl() { return pageUrl; }
         public void setPageUrl(String pageUrl) { this.pageUrl = pageUrl; }
 
-        public Instant getTimestamp() { return timestamp; }
-        public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }
+        public Long getTimestamp() { return timestamp; }
+        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
 
-        public Long getDurationMs() { return durationMs; }
-        public void setDurationMs(Long durationMs) { this.durationMs = durationMs; }
-
-        public Integer getEventCount() { return eventCount; }
-        public void setEventCount(Integer eventCount) { this.eventCount = eventCount; }
+        public Integer getClicksOnPage() { return clicksOnPage; }
+        public void setClicksOnPage(Integer clicksOnPage) { this.clicksOnPage = clicksOnPage; }
     }
 }
