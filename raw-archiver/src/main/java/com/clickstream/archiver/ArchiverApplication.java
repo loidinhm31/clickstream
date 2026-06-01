@@ -5,6 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Raw Event Archiver Application
@@ -18,14 +19,10 @@ import org.springframework.kafka.annotation.EnableKafka;
  */
 @SpringBootApplication
 @EnableKafka
+@EnableScheduling
 public class ArchiverApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(ArchiverApplication.class, args);
-    }
-
-    @Bean
-    public EventValidator eventValidator() {
-        return new EventValidator();
     }
 }

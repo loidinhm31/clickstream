@@ -9,6 +9,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -44,6 +50,7 @@ public class RawEventArchiver {
     private final List<ClickEvent> buffer = new ArrayList<>();
     private final List<Acknowledgment> acknowledgments = new ArrayList<>();
     private final Lock bufferLock = new ReentrantLock();
+    private final Lock flushLock = new ReentrantLock();
     
     private Instant lastFlush;
     private Instant lastSuccessfulWrite;
@@ -101,9 +108,6 @@ public class RawEventArchiver {
                 return;
             }
             
-            // Prepare for flush outside lock
-            List<ClickEvent> eventsToFlush = null;
-            List<Acknowledgment> acksToCommit = null;
             String flushReason = null;
             
             bufferLock.lock();
@@ -126,28 +130,67 @@ public class RawEventArchiver {
                         .getSeconds() >= config.getFlush().getTimeIntervalSeconds();
                 
                 if (shouldFlushByCount || shouldFlushByTime) {
-                    // Copy buffer and acks for processing OUTSIDE lock
-                    eventsToFlush = new ArrayList<>(buffer);
-                    acksToCommit = new ArrayList<>(acknowledgments);
                     flushReason = shouldFlushByCount ? "event threshold" : "time interval";
-                    
-                    // DON'T clear yet - clear after successful write
                 }
             } finally {
                 bufferLock.unlock();
             }
             
             // I/O OUTSIDE LOCK - non-blocking for other consumer threads
-            if (eventsToFlush != null) {
-                flushBufferWithRetry(eventsToFlush, acksToCommit, flushReason);
+            if (flushReason != null) {
+                flushCurrentBuffer(flushReason);
             }
             
         } catch (IOException e) {
             log.error("Failed to parse event from Kafka: {}", e.getMessage());  // No stack trace
             ack.acknowledge();  // Skip unparseable messages
         } catch (Exception e) {
-            log.error("Unexpected error processing event: {}", e.getMessage());  // No stack trace
+            log.error("Unexpected error processing event", e);
             // Don't commit - will retry on restart
+        }
+    }
+
+    /**
+     * Ensures partial batches flush even when no later Kafka record arrives to
+     * trigger the time check in consume().
+     */
+    @Scheduled(fixedDelayString = "${archiver.flush.scheduler-interval-ms:1000}")
+    public void flushBufferedEventsOnInterval() {
+        boolean shouldFlush;
+        bufferLock.lock();
+        try {
+            shouldFlush = !buffer.isEmpty()
+                    && Duration.between(lastFlush, Instant.now()).getSeconds()
+                    >= config.getFlush().getTimeIntervalSeconds();
+        } finally {
+            bufferLock.unlock();
+        }
+
+        if (shouldFlush) {
+            flushCurrentBuffer("scheduled time interval");
+        }
+    }
+
+    private void flushCurrentBuffer(String reason) {
+        flushLock.lock();
+        try {
+            List<ClickEvent> eventsToFlush;
+            List<Acknowledgment> acksToCommit;
+
+            bufferLock.lock();
+            try {
+                if (buffer.isEmpty()) {
+                    return;
+                }
+                eventsToFlush = new ArrayList<>(buffer);
+                acksToCommit = new ArrayList<>(acknowledgments);
+            } finally {
+                bufferLock.unlock();
+            }
+
+            flushBufferWithRetry(eventsToFlush, acksToCommit, reason);
+        } finally {
+            flushLock.unlock();
         }
     }
     
@@ -177,11 +220,13 @@ public class RawEventArchiver {
                     ack.acknowledge();
                 }
                 
-                // Update stats and clear buffer (inside lock)
+                // Update stats and remove only the flushed snapshot. Events added
+                // during the write stay buffered for the next flush.
                 bufferLock.lock();
                 try {
-                    buffer.clear();
-                    acknowledgments.clear();
+                    int flushedCount = Math.min(events.size(), buffer.size());
+                    buffer.subList(0, flushedCount).clear();
+                    acknowledgments.subList(0, Math.min(acks.size(), acknowledgments.size())).clear();
                     totalEventsProcessed += events.size();
                     totalBatchesFlushed++;
                     lastFlush = Instant.now();
@@ -241,11 +286,13 @@ public class RawEventArchiver {
             ack.acknowledge();
         }
         
-        // Clear buffer
+        // Remove only the failed snapshot; events appended during retry handling
+        // remain buffered for a later flush.
         bufferLock.lock();
         try {
-            buffer.clear();
-            acknowledgments.clear();
+            int failedCount = Math.min(events.size(), buffer.size());
+            buffer.subList(0, failedCount).clear();
+            acknowledgments.subList(0, Math.min(acks.size(), acknowledgments.size())).clear();
             lastFlush = Instant.now();
         } finally {
             bufferLock.unlock();
@@ -328,22 +375,9 @@ public class RawEventArchiver {
     public void shutdown() {
         log.info("Shutting down Raw Event Archiver...");
         
-        List<ClickEvent> eventsToFlush = null;
-        List<Acknowledgment> acksToCommit = null;
-        
-        bufferLock.lock();
-        try {
-            if (!buffer.isEmpty()) {
-                log.info("Flushing remaining {} buffered events before shutdown", buffer.size());
-                eventsToFlush = new ArrayList<>(buffer);
-                acksToCommit = new ArrayList<>(acknowledgments);
-            }
-        } finally {
-            bufferLock.unlock();
-        }
-        
-        if (eventsToFlush != null) {
-            flushBufferWithRetry(eventsToFlush, acksToCommit, "shutdown");
+        if (getStats().currentBufferSize() > 0) {
+            log.info("Flushing remaining {} buffered events before shutdown", getStats().currentBufferSize());
+            flushCurrentBuffer("shutdown");
         }
         
         log.info("Raw Event Archiver shutdown complete. Total processed: {} events in {} batches",

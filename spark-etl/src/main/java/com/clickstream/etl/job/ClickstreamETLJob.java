@@ -65,13 +65,13 @@ public class ClickstreamETLJob implements CommandLineRunner {
     private int processingTimeSeconds;
     
     @Value("${streaming.watermark.delay}")
-    private int watermarkDelayMinutes;
+    private String watermarkDelay;
     
     @Value("${streaming.session.gap}")
-    private int sessionGapMinutes;
+    private String sessionGap;
     
     @Value("${streaming.page-metrics.window}")
-    private int pageMetricsWindowMinutes;
+    private String pageMetricsWindow;
     
     @Value("${mongodb.collections.session-aggregates}")
     private String sessionAggregatesCollection;
@@ -170,17 +170,17 @@ public class ClickstreamETLJob implements CommandLineRunner {
                 .withColumn("timestamp", 
                         to_timestamp(from_unixtime(col("timestamp").divide(1000))))
                 // Apply watermark for late event handling
-                .withWatermark("timestamp", watermarkDelayMinutes + " minutes");
+                .withWatermark("timestamp", watermarkDelay);
     }
     
     /**
      * Starts session aggregation streaming query.
      */
     private StreamingQuery startSessionAggregation(Dataset<Row> rawStream) throws Exception {
-        logger.info("Starting session aggregation query (gap: {} min)", sessionGapMinutes);
+        logger.info("Starting session aggregation query (gap: {})", sessionGap);
         
         Dataset<Row> sessionAggregates = sessionAggregator.aggregate(
-                rawStream, sessionGapMinutes);
+                rawStream, sessionGap);
         
         return sessionAggregates.writeStream()
                 .foreachBatch((VoidFunction2<Dataset<Row>, Long>) (batchDf, batchId) -> 
@@ -195,10 +195,10 @@ public class ClickstreamETLJob implements CommandLineRunner {
      * Starts page metrics aggregation streaming query.
      */
     private StreamingQuery startPageMetricsAggregation(Dataset<Row> rawStream) throws Exception {
-        logger.info("Starting page metrics query (window: {} min)", pageMetricsWindowMinutes);
+        logger.info("Starting page metrics query (window: {})", pageMetricsWindow);
         
         Dataset<Row> pageMetrics = pageMetricsAggregator.aggregate(
-                rawStream, pageMetricsWindowMinutes);
+                rawStream, pageMetricsWindow);
         
         return pageMetrics.writeStream()
                 .foreachBatch((VoidFunction2<Dataset<Row>, Long>) (batchDf, batchId) -> 
@@ -213,10 +213,10 @@ public class ClickstreamETLJob implements CommandLineRunner {
      * Starts user journey building streaming query.
      */
     private StreamingQuery startUserJourneyBuilding(Dataset<Row> rawStream) throws Exception {
-        logger.info("Starting user journey query (gap: {} min)", sessionGapMinutes);
+        logger.info("Starting user journey query (gap: {})", sessionGap);
         
         Dataset<Row> userJourneys = userJourneyBuilder.build(
-                rawStream, sessionGapMinutes);
+                rawStream, sessionGap);
         
         return userJourneys.writeStream()
                 .foreachBatch((VoidFunction2<Dataset<Row>, Long>) (batchDf, batchId) -> 

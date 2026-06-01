@@ -35,9 +35,7 @@ public class PageMetricsAggregator {
      * @param windowMinutes tumbling window duration in minutes
      * @return aggregated DataFrame ready for MongoDB sink
      */
-    public Dataset<Row> aggregate(Dataset<Row> rawEvents, int windowMinutes) {
-        String windowDuration = windowMinutes + " minutes";
-        
+    public Dataset<Row> aggregate(Dataset<Row> rawEvents, String windowDuration) {
         // First pass: aggregate metrics per page per window
         Dataset<Row> pageMetrics = rawEvents
                 .groupBy(

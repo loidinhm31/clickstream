@@ -1,10 +1,6 @@
 spring:
   application:
     name: raw-archiver
-
-server:
-  port: 9053
-
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9056}
     consumer:
@@ -16,6 +12,9 @@ server:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     listener:
       ack-mode: manual                  # enables Acknowledgment parameter
+
+server:
+  port: 9053
 
 archiver:
   topic: clickstream-events

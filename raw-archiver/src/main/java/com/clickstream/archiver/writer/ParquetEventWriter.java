@@ -6,13 +6,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.io.LocalOutputFile;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.io.IOException;
 import java.util.List;
 
@@ -56,17 +57,17 @@ public class ParquetEventWriter {
             }
         }
         
-        Path path = new Path(filePath);
+        LocalOutputFile outputFile = new LocalOutputFile(Paths.get(filePath));
         CompressionCodecName compression = CompressionCodecName.valueOf(
             config.getParquet().getCompression().toUpperCase()
         );
-        
+
         try (ParquetWriter<GenericRecord> writer = AvroParquetWriter
-                .<GenericRecord>builder(path)
+                .<GenericRecord>builder(outputFile)
                 .withSchema(avroSchema)
                 .withCompressionCodec(compression)
                 .withPageSize(config.getParquet().getPageSize())
-                .withRowGroupSize(config.getParquet().getRowGroupSize())
+                .withRowGroupSize((long) config.getParquet().getRowGroupSize())
                 .build()) {
             
             for (ClickEvent event : events) {

@@ -41,10 +41,7 @@ public class SessionAggregator {
      * @param sessionGapMinutes session window gap in minutes
      * @return aggregated DataFrame ready for MongoDB sink
      */
-    public Dataset<Row> aggregate(Dataset<Row> rawEvents, int sessionGapMinutes) {
-        // Define session window (gap-based windowing)
-        String sessionGap = sessionGapMinutes + "minutes";
-        
+    public Dataset<Row> aggregate(Dataset<Row> rawEvents, String sessionGap) {
         // Create struct with timestamp and pageUrl for ordering
         Dataset<Row> eventsWithStruct = rawEvents
                 .withColumn("pageInfo", struct(col("timestamp"), col("pageUrl")));

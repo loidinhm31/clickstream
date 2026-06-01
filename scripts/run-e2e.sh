@@ -30,17 +30,28 @@ bash scripts/verify-setup.sh
 
 # 2. Restart raw-archiver with reduced flush interval so parquet files appear within 90s timeout
 echo -e "\n${YELLOW}[2/5] Restarting Raw Archiver with flush interval=${FLUSH_INTERVAL_SECONDS}s...${NC}"
+# Kill by PID file if tracked
 if [ -f "${ARCHIVER_PID}" ] && ps -p "$(cat "${ARCHIVER_PID}")" > /dev/null 2>&1; then
     echo "  Stopping existing raw-archiver (PID: $(cat "${ARCHIVER_PID}"))..."
     kill -15 "$(cat "${ARCHIVER_PID}")" 2>/dev/null || true
     rm -f "${ARCHIVER_PID}"
     sleep 3
 fi
+# Kill any untracked process still holding port 9053
+STALE_PID=$(lsof -ti tcp:"${RAW_ARCHIVER_PORT}" 2>/dev/null || true)
+if [ -n "${STALE_PID}" ]; then
+    echo "  Killing stale process on port ${RAW_ARCHIVER_PORT} (PID: ${STALE_PID})..."
+    kill -15 "${STALE_PID}" 2>/dev/null || true
+    sleep 3
+fi
 
 mkdir -p "${PID_DIR}" logs
-(cd raw-archiver && FLUSH_INTERVAL_SECONDS=${FLUSH_INTERVAL_SECONDS} mvn spring-boot:run \
-    -Dspring-boot.run.jvmArguments="-Dserver.port=${RAW_ARCHIVER_PORT} -Darchiver.flush.time-interval-seconds=${FLUSH_INTERVAL_SECONDS}" \
-    > "../${ARCHIVER_LOG}" 2>&1 & echo $! > "../${ARCHIVER_PID}")
+DATA_LAKE_PATH=./data-lake java \
+    -Dserver.port="${RAW_ARCHIVER_PORT}" \
+    -Darchiver.flush.time-interval-seconds="${FLUSH_INTERVAL_SECONDS}" \
+    -jar raw-archiver/target/raw-archiver-1.0.0-SNAPSHOT.jar \
+    > "${ARCHIVER_LOG}" 2>&1 &
+echo $! > "${ARCHIVER_PID}"
 
 echo -n "  Waiting for raw-archiver to start"
 for i in $(seq 1 30); do

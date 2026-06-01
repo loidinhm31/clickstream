@@ -38,9 +38,7 @@ public class UserJourneyBuilder {
      * @param sessionGapMinutes session window gap in minutes
      * @return journey DataFrame ready for MongoDB sink
      */
-    public Dataset<Row> build(Dataset<Row> rawEvents, int sessionGapMinutes) {
-        String sessionGap = sessionGapMinutes + " minutes";
-        
+    public Dataset<Row> build(Dataset<Row> rawEvents, String sessionGap) {
         // Filter to PAGE_VIEW events only for journey tracking
         Dataset<Row> pageViews = rawEvents
                 .filter(col("eventType").equalTo("PAGE_VIEW"));

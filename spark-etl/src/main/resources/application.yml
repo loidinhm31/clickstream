@@ -44,16 +44,16 @@ spark:
 streaming:
   trigger:
     # Micro-batch interval in seconds
-    processing-time: 30
+    processing-time: ${SPARK_BATCH_INTERVAL:30}
   watermark:
     # Late event tolerance in minutes
-    delay: 10
+    delay: ${SPARK_WATERMARK_DELAY:10}
   session:
-    # Session window gap in minutes
-    gap: 30
+    # Session window gap
+    gap: ${SPARK_SESSION_GAP:30 minutes}
   page-metrics:
-    # Page metrics window duration in minutes
-    window: 5
+    # Page metrics window duration
+    window: ${SPARK_PAGE_WINDOW:5 minutes}
 
 logging:
   level:
