@@ -4,6 +4,8 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+const executablePath = process.env['PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH'];
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -25,6 +27,10 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.BASE_URL || 'http://localhost:9059',
+
+    // Allow the wrapper to fall back to an already installed Chromium binary
+    // when the exact Playwright-managed revision is unavailable on the host.
+    launchOptions: executablePath ? { executablePath } : undefined,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
