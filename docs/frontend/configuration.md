@@ -233,6 +233,8 @@ npm run dev
 
 For Docker-network e2e runs, configure the Vite `/api` and `/ws` proxy targets to use Docker service URLs instead of host `localhost` ports.
 
+For the supported live-stack E2E runner, see [E2E Testing Guide](./e2e-testing.md). The wrapper expects the Vite dev server on port `9059` and verifies that the frontend is reachable before Playwright starts.
+
 ### Production Build
 
 ```bash

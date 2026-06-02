@@ -5,9 +5,10 @@ React 19 analytics dashboard with real-time WebSocket support and event tracking
 ## Contents
 
 - [Configuration Guide](./configuration.md) - Environment setup, Vite config, API endpoints
+- [E2E Testing Guide](./e2e-testing.md) - Recommended Playwright flow, Fedora notes, troubleshooting
 - [Component Architecture](./components.md) - Atomic design, component hierarchy, examples
 - [Event Tracking](./event-tracking.md) - Session management, event batching, tracking patterns
-- [Integration Testing](./integration-testing.md) - End-to-end testing, service verification
+- [Integration Testing](./integration-testing.md) - Component/service integration patterns
 - [Performance Guide](./performance.md) - Optimization techniques, bundle size, caching strategies
 
 ## Quick Start
@@ -15,12 +16,18 @@ React 19 analytics dashboard with real-time WebSocket support and event tracking
 ```bash
 cd frontend
 npm install
-npm run dev  # http://localhost:3000
+npm run dev  # http://localhost:9059
 ```
 
 **Requires backend services:**
 - Ingestion API: http://localhost:9051
 - Real-time Analytics: ws://localhost:9052
+
+**Recommended live-stack E2E entrypoint:**
+
+```bash
+bash scripts/run-e2e.sh
+```
 
 ## Project Statistics
 

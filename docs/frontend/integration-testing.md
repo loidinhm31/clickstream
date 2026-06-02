@@ -1,6 +1,13 @@
 # Frontend Integration Testing Guide
 
-Complete guide for testing the frontend with backend services (Ingestion API, Real-time Analytics, Kafka, MongoDB).
+This document focuses on frontend-to-service integration patterns and test scenarios.
+
+For the supported live-stack Playwright workflow, use:
+
+- [E2E Testing Guide](./e2e-testing.md)
+- `bash scripts/run-e2e.sh`
+
+That wrapper now verifies infrastructure, starts missing app services, applies the Raw Archiver flush override, and handles the Playwright browser fallback used on Fedora hosts.
 
 ## Prerequisites
 

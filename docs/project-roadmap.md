@@ -3,7 +3,7 @@ title: "Clickstream Analytics Application - Project Roadmap"
 description: "Complete project roadmap tracking all development phases, milestones, and progress"
 status: completed
 created: 2026-04-09
-last-updated: 2026-05-13
+last-updated: 2026-06-02
 ---
 
 # Clickstream Analytics Application — Project Roadmap
@@ -331,6 +331,15 @@ End-to-end clickstream analytics system with all implementation phases, service 
 - ✅ Hardened frontend dev proxy configuration for containerized e2e execution.
 - ✅ Fixed frontend event/session/journey handling to match the live analytics schemas.
 
+### v1.1.2 — E2E Runner Hardening & Fedora Playwright Guidance (2026-06-02)
+
+**E2E runtime hardening**
+- ✅ Updated `scripts/verify-setup.sh` to detect Docker or Podman and bootstrap `XDG_RUNTIME_DIR` for Fedora hosts.
+- ✅ Hardened `scripts/run-e2e.sh` to verify infrastructure, auto-start missing app services, and restart Raw Archiver with readiness checks before Playwright starts.
+- ✅ Added Playwright Chromium fallback support via `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` so cached browser binaries can be reused when Fedora browser installation hangs.
+- ✅ Added dedicated frontend E2E documentation covering Fedora, Podman, `distrobox`, troubleshooting, and the recommended runner flow.
+- ✅ Re-validated the full standard user journey from a cold app-service state through MongoDB and Parquet persistence.
+
 ### v1.0.0 — Full Project Delivery (2026-04-18)
 
 **Backend Services (6 phases + shared models)**
@@ -357,5 +366,5 @@ End-to-end clickstream analytics system with all implementation phases, service 
 
 ---
 
-**Last Update:** 2026-05-13  
+**Last Update:** 2026-06-02  
 **Status:** Completed
