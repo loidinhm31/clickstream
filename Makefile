@@ -321,12 +321,12 @@ test-frontend: ## Run Frontend tests
 	cd frontend && npm test
 	@echo "$(GREEN)✓ Frontend tests complete$(NC)"
 
-test-e2e: ## Run E2E Playwright tests (requires all services running via make start-all)
+test-e2e: ## Run E2E Playwright tests (verifies infra, starts missing app services, runs Playwright)
 	@echo "$(CYAN)Running E2E tests (Playwright)...$(NC)"
 	bash scripts/run-e2e.sh
 	@echo "$(GREEN)✓ E2E tests complete$(NC)"
 
-test-e2e-headed: ## Run E2E Playwright tests in headed (visible browser) mode
+test-e2e-headed: ## Run headed E2E Playwright tests with the same bootstrap flow
 	@echo "$(CYAN)Running E2E tests (headed)...$(NC)"
 	bash scripts/run-e2e.sh --headed
 	@echo "$(GREEN)✓ E2E tests complete$(NC)"
